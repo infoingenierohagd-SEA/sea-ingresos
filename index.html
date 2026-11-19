@@ -206,7 +206,7 @@
         <div><label for="f_abono">Abono</label><input id="f_abono" type="number" inputmode="numeric" min="0"></div>
       </div>
       <label for="f_medio">Medio del abono</label>
-      <select id="f_medio"><option value="">—</option><option>Efectivo</option><option>Nequi</option><option>Daviplata</option><option>Transferencia</option><option>Tarjeta</option></select>
+      <select id="f_medio"><option value="">—</option><option>EFECTIVO</option><option>LULO 3107907363</option><option>NEQUI 3124429774</option><option>DAVIPLATA 3124429774</option><option>TARJETA CREDITO SEA</option><option>TARJETA DEBITO SEA</option></select>
       <div class="nota" id="lblFormas"></div>
       <div class="total"><span>Saldo</span><span id="lblSaldo">$ 0</span></div>
     </div>
@@ -301,7 +301,7 @@ function mockApi(o) {
     setTimeout(function () {
       var us = { '1111': 'Alexander González', '2222': 'Tatiana Cárdenas' }[o.pin];
       if (!us) return rej(new Error('PIN incorrecto'));
-      if (o.accion === 'login') return res({ ok: true, usuario: us, siguiente: mock.ultimo + 1, formas: ['EFECTIVO', 'NEQUI ALEX', 'DAVIPLATA', 'TRANSFERENCIA BANCOLOMBIA', 'TARJETA DEBITO', 'TARJETA CREDITO'] });
+      if (o.accion === 'login') return res({ ok: true, usuario: us, siguiente: mock.ultimo + 1, formas: [] });
       if (o.accion === 'guardar') { mock.ultimo++; var f = { NUMERO: mock.ultimo, FECHA_HORA: new Date().toISOString().slice(0, 16).replace('T', ' '), FECHA: hoyISO(), RECIBE: us, NOMBRE: o.datos.nombre, TELEFONO: o.datos.telefono, TIPO_VEHICULO: o.datos.tipo, PDF_URL: '', CARPETA_URL: 'https://drive.google.com/drive/folders/DEMO', IMPRESA: '', ESTADO: 'ACTIVA', NUM_ARCHIVOS: 0, CANAL: o.datos.canal === 'papel' ? 'SIN WHATSAPP (FIRMA EN PAPEL)' : 'WHATSAPP' }; mock.filas.push(f);
         return res({ ok: true, numero: mock.ultimo, fecha: f.FECHA, recibe: us, carpeta: f.CARPETA_URL }); }
       if (o.accion === 'subir') { var fi = mock.filas.filter(function (x) { return x.NUMERO == o.numero; })[0]; if (o.esPdf) fi.PDF_URL = 'https://drive.google.com/file/d/DEMO'; else if (o.esAcepto) { fi.CAPTURA_ACEPTO = 'https://drive.google.com/file/d/DEMO-ACEPTO'; fi.ACEPTACION = 'ACEPTÓ POR WHATSAPP (demo, con captura)'; } else fi.NUM_ARCHIVOS++; return res({ ok: true }); }
@@ -331,7 +331,7 @@ function entrar(pin, silencioso) {
 /* Formas de pago: las mismas de la hoja LISTAS del Excel (el Excel las envía al presionar Actualizar ingresos) */
 function ponerFormas(lista) {
   var sel = $('f_medio');
-  if (!lista || !lista.length) { $('lblFormas').textContent = 'Lista provisional: presione "Actualizar ingresos" en el Excel para traer las formas de pago de LISTAS.'; return; }
+  if (!lista || !lista.length) return;   // sin lista del Excel: quedan las formas de pago de la orden de salida que trae la app
   var actual = sel.value;
   sel.innerHTML = '<option value="">—</option>' + lista.map(function (f) { return '<option>' + esc(f) + '</option>'; }).join('');
   if (lista.indexOf(actual) >= 0) sel.value = actual;
@@ -554,12 +554,18 @@ $('btnWaChat').onclick = function () {
   window.open('https://api.whatsapp.com/send?phone=' + telWa(P.datos.telefono) + '&text=' + encodeURIComponent(mensaje(P)), '_blank');
 };
 function compartir(files, texto, paso) {
-  var data = { files: files }; if (texto) data.text = texto;
-  if (navigator.canShare && navigator.canShare({ files: files })) {
-    navigator.share(data).then(function () { $(paso).classList.add('ok'); }).catch(function (e) { if (e.name !== 'AbortError') alert('No se pudo compartir: ' + e.message); });
-  } else {
-    alert('Este navegador no permite compartir archivos. Se descargará el archivo para adjuntarlo a mano.');
+  // Solo archivos (sin texto): algunos celulares y Windows rechazan archivos + texto con "Permission denied".
+  var data = { files: files };
+  function respaldo(msg) {
     files.forEach(descargar);
+    alert((msg ? msg + '\n\n' : '') + 'El archivo se descargó en el equipo. Ábralo en WhatsApp con el clip 📎 › Documento (o Galería para fotos) y envíelo al cliente.');
+    $(paso).classList.add('ok');
+  }
+  if (navigator.canShare && navigator.canShare(data)) {
+    navigator.share(data).then(function () { $(paso).classList.add('ok'); })
+      .catch(function (e) { if (e.name !== 'AbortError') respaldo('Este equipo no permitió compartir directamente.'); });
+  } else {
+    respaldo('Este navegador no permite compartir archivos.');
   }
 }
 $('btnWaFotos').onclick = function () { compartir(S.ultima.files, 'Fotos del ingreso - Orden No. ' + S.ultima.numero + ' - SEA', 'p2'); };
