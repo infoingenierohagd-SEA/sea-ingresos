@@ -17,7 +17,10 @@
   header small { opacity:.85; font-size:13px; }
   header button { background:transparent; color:#fff; border:1px solid rgba(255,255,255,.5); border-radius:8px; padding:5px 9px; font-size:13px; }
   nav { display:flex; background:#fff; border-bottom:1px solid var(--borde); position:sticky; top:48px; z-index:4; }
-  nav button { flex:1; padding:12px; border:0; background:none; font-size:15px; font-weight:600; color:var(--gris); border-bottom:3px solid transparent; }
+  nav button { flex:1; padding:12px 4px; border:0; background:none; font-size:14px; font-weight:600; color:var(--gris); border-bottom:3px solid transparent; }
+  .tb-fila { display:flex; justify-content:space-between; align-items:center; padding:11px 12px; border-radius:9px; margin-top:7px; font-size:15px; cursor:pointer; }
+  .tb-fila b { font-size:20px; }
+  .tb-al { font-size:14px; padding:8px 0; border-bottom:1px solid #edf1ea; } .tb-al:last-child { border-bottom:0; }
   nav button.on { color:var(--verde); border-bottom-color:var(--verde); }
   main { max-width:720px; margin:0 auto; padding:12px 12px 120px; }
   .card { background:#fff; border:1px solid var(--borde); border-radius:12px; padding:14px; margin-bottom:12px; }
@@ -81,6 +84,22 @@
   .demo { background:#fff3cd; color:#7a5b00; text-align:center; font-size:13px; padding:6px; }
   .check { display:flex; gap:10px; align-items:flex-start; margin-top:12px; font-size:14px; }
   .check input { width:22px; height:22px; flex:0 0 22px; }
+  .cnt { background:var(--rojo); color:#fff; border-radius:10px; font-size:11px; padding:1px 6px; margin-left:3px; }
+  .comp { border-top:1px solid #edf1ea; padding:9px 0; } .comp:first-child { border-top:0; }
+  .comp .nom { font-weight:600; font-size:14px; margin-bottom:6px; }
+  .est3 { display:flex; gap:6px; }
+  .est3 button { flex:1; padding:8px 2px; border:1px solid var(--borde); background:#fff; border-radius:8px; font-size:13px; }
+  .est3 button.on[data-v=ok] { background:#eaf3de; border-color:#639922; color:#27500a; font-weight:700; }
+  .est3 button.on[data-v=ajuste] { background:#fff3cd; border-color:#ba7517; color:#633806; font-weight:700; }
+  .est3 button.on[data-v=cambio] { background:#fde7e7; border-color:#e24b4a; color:#791f1f; font-weight:700; }
+  .comp input { margin-top:6px; padding:8px 10px; font-size:15px; }
+  .estado-box { border-radius:9px; padding:9px 11px; margin-top:8px; font-size:14px; }
+  .it-ok { color:#27500a; } .it-no { color:#a32d2d; text-decoration:line-through; } .it-pen { color:#7a5b00; }
+  details summary { font-size:14px; color:var(--verde); font-weight:600; margin-top:10px; }
+  .resp-it { display:flex; align-items:center; gap:8px; padding:9px 0; border-bottom:1px solid #edf1ea; font-size:14px; }
+  .resp-it > div:first-child { flex:1; min-width:0; }
+  .resp-it .seg button { padding:8px 10px; font-size:13px; }
+  .resp-it .seg button.on[data-v=no] { background:var(--rojo); }
 </style>
 </head>
 <body>
@@ -101,13 +120,15 @@
 <!-- ============ APP ============ -->
 <div id="app" class="oculto">
   <header>
-    <b>SEA · Órdenes de ingreso</b>
+    <b id="tituloApp">SEA · Órdenes de ingreso</b>
     <small id="lblUsuario"></small>
     <button id="btnSalir">Salir</button>
   </header>
-  <nav>
+  <nav id="navCoord">
     <button id="tabNuevo" class="on">Nuevo ingreso</button>
     <button id="tabLista">Órdenes</button>
+    <button id="tabInformes">Informes<span id="cntInf" class="cnt oculto"></span></button>
+    <button id="tabTablero">Tablero</button>
   </nav>
 
   <main id="vistaNuevo">
@@ -115,6 +136,11 @@
       <b style="color:#7a5b00">⚠️ <span id="avisoAceptoTxt"></span></b>
       <div class="nota" style="color:#7a5b00">Falta la captura del ACEPTO (WhatsApp) o la foto de la orden firmada (clientes sin WhatsApp). Adjúntela desde la pestaña Órdenes.</div>
       <button class="btn sec peq" id="btnVerFaltan" type="button">Ver cuáles faltan</button>
+    </div>
+    <div id="avisoInf" class="card oculto" style="background:#eeedfe;border-color:#afa9ec">
+      <b style="color:#3c3489">📝 <span id="avisoInfTxt"></span></b>
+      <div class="nota" style="color:#3c3489" id="avisoInfDet"></div>
+      <button class="btn sec peq" id="btnVerInf" type="button">Ver informes</button>
     </div>
     <div id="avisoTurnos" class="card oculto" style="background:#e7f1fb;border-color:#9cc3ea">
       <b style="color:#0c447c">📅 <span id="avisoTurnosTxt"></span></b>
@@ -179,6 +205,15 @@
         <div><label for="f_modelo">Modelo / marca</label><input id="f_modelo" type="text"></div>
         <div><label for="f_color">Color</label><input id="f_color" type="text"></div>
       </div>
+      <label for="f_motor">N° de motor o chasis (si se puede ubicar)</label>
+      <input id="f_motor" type="text" autocapitalize="characters" autocomplete="off">
+    </div>
+
+    <div class="card">
+      <h3>Orden de trabajo</h3>
+      <label for="f_tecnico">Técnico asignado</label>
+      <select id="f_tecnico"><option value="">— Por asignar —</option><option>ANDERSSON GARZON</option><option>CAMILO CARDENAS</option></select>
+      <div class="nota">Al guardar, se le avisa al técnico por WhatsApp y la orden le aparece en la app (Mis órdenes). La orden de trabajo NO se le envía al cliente.</div>
     </div>
 
     <div class="card">
@@ -249,10 +284,128 @@
         <button class="btn sec peq" id="btnRecargar" style="flex:0 0 auto;width:auto;margin:0;padding:7px 12px">↻ Actualizar</button>
       </div>
       <div class="nota">Toque “📸 Aceptó” y adjunte la captura cuando el cliente responda ACEPTO por WhatsApp. Desde el computador: “PDF” abre la orden para imprimir (Ctrl+P). Los enlaces PDF y Fotos solo abren con la cuenta de Google del negocio.</div>
+      <label for="filtroEtapa" style="margin-top:10px">Etapa</label>
+      <select id="filtroEtapa"><option value="">Todas</option><option value="EN TALLER">🔧 Por diagnosticar</option><option value="INFORME POR REVISAR">📝 Informe por revisar</option><option value="ESPERANDO CLIENTE">🟡 Esperando al cliente</option><option value="APROBADO">🟢 Aprobado</option><option value="NO APROBADO">🔴 No aprobado</option><option value="TERMINADO">✅ Terminado (avisar entrega)</option><option value="LISTO PARA ENTREGA">📦 Avisado, por recoger</option><option value="ENTREGADO">🏁 Entregado</option></select>
       <label class="check" style="margin-top:8px"><input type="checkbox" id="soloTurnos"><span>Mostrar solo los turnos pendientes (vehículo aún no llega)</span></label>
       <label class="check" style="margin-top:4px"><input type="checkbox" id="soloFaltan"><span>Mostrar solo las que no tienen aceptación (captura o foto firmada)</span></label>
       <div id="lista"><div class="nota">Cargando…</div></div>
     </div>
+  </main>
+
+  <main id="vistaTablero" class="oculto">
+    <div class="card"><div class="fila" style="align-items:center"><h3 style="margin:0">Tablero de control</h3>
+      <button class="btn sec peq" id="btnRecargarTab" style="flex:0 0 auto;width:auto;margin:0;padding:7px 12px">↻ Actualizar</button></div>
+      <div class="nota">Resumen de las órdenes que no se han entregado.</div></div>
+    <div id="tableroCont"></div>
+  </main>
+
+  <!-- ===== Coordinador: informes de los técnicos ===== -->
+  <main id="vistaInformes" class="oculto">
+    <div class="card">
+      <div class="fila" style="align-items:center">
+        <h3 style="margin:0">Informes por revisar</h3>
+        <button class="btn sec peq" id="btnRecargarInf" style="flex:0 0 auto;width:auto;margin:0;padding:7px 12px">↻ Actualizar</button>
+      </div>
+      <div class="nota">Los manda el técnico. Revise, corrija y envíe al cliente. Nada le llega al cliente sin pasar por aquí.</div>
+      <div id="listaRev"></div>
+    </div>
+    <div class="card">
+      <h3>Esperando respuesta del cliente</h3>
+      <div class="nota">Cuando el cliente conteste, toque “✅ Registrar respuesta” y marque qué autorizó. El técnico no avanza hasta entonces.</div>
+      <div id="listaEsp"></div>
+    </div>
+  </main>
+
+  <main id="vistaRevisar" class="oculto">
+    <div class="card">
+      <div class="fila" style="align-items:center">
+        <h3 style="margin:0" id="revTitulo"></h3>
+        <button class="btn sec peq" id="btnRevVolver" style="flex:0 0 auto;width:auto;margin:0;padding:7px 12px">← Volver</button>
+      </div>
+      <div class="nota" id="revSub"></div>
+      <label style="margin-top:10px">Tipo de informe</label>
+      <div class="seg" id="segRevTipo"><button data-v="mantenimiento">Mantenimiento</button><button data-v="servicio">Servicio / reparación</button></div>
+    </div>
+    <div class="card" id="cardRevMant"><h3>Revisión por componente</h3><div class="nota">Puede cambiar las opciones y corregir las notas del técnico.</div><div id="revComps"></div></div>
+    <div class="card">
+      <h3>Descripción del proceso y hallazgos</h3><textarea id="revDesc"></textarea>
+      <h3 style="margin-top:14px">Observaciones</h3><textarea id="revObs" style="min-height:56px"></textarea>
+    </div>
+    <div class="card">
+      <h3>Cotización</h3>
+      <div id="revPrevios" class="nota"></div>
+      <div class="nota"><b>Por confirmar</b> (el cliente autoriza cada ítem por separado):</div>
+      <div id="revItems"></div>
+      <div class="nota" id="revSinCod" style="color:#7a5b00"></div>
+      <button class="btn sec peq" id="btnRevItem" type="button">+ Agregar ítem</button>
+      <div class="total"><span>Total</span><span id="revTotal">$ 0</span></div>
+      <div class="fila nota"><span>Abono</span><span id="revAbono" style="text-align:right"></span></div>
+      <div class="total" style="border:0;margin-top:2px"><span>Saldo</span><span id="revSaldo">$ 0</span></div>
+    </div>
+    <div class="card"><h3>Fotos del técnico</h3><div class="nota" id="revFotos"></div></div>
+    <div class="card">
+      <h3>Mensaje para el cliente</h3>
+      <div class="nota">Se arma solo con lo de arriba. Puede corregir la redacción aquí mismo antes de enviar.</div>
+      <textarea id="revTexto" style="min-height:280px;font-size:14px"></textarea>
+      <button class="btn sec peq" id="btnRevRegenerar" type="button">↻ Volver a armar el mensaje</button>
+    </div>
+    <div id="errRev" class="err"></div>
+    <button class="btn pri" id="btnRevEnviar">Guardar y enviar al cliente</button>
+  </main>
+
+  <!-- ===== Técnico ===== -->
+  <main id="vistaMis" class="oculto">
+    <div class="card">
+      <div class="fila" style="align-items:center">
+        <h3 style="margin:0">Mis órdenes</h3>
+        <button class="btn sec peq" id="btnRecargarMis" style="flex:0 0 auto;width:auto;margin:0;padding:7px 12px">↻ Actualizar</button>
+      </div>
+      <div class="nota">Haga el informe de cada orden. Alexander o Tatiana lo revisan y se lo envían al cliente. <b>No avance con repuestos o arreglos hasta que la orden salga 🟢 Aprobado.</b></div>
+    </div>
+    <div id="listaMis"></div>
+  </main>
+
+  <main id="vistaFormInf" class="oculto">
+    <div class="card">
+      <div class="fila" style="align-items:center">
+        <h3 style="margin:0" id="infTitulo">Informe</h3>
+        <button class="btn sec peq" id="btnVolverInf" style="flex:0 0 auto;width:auto;margin:0;padding:7px 12px">← Volver</button>
+      </div>
+      <div class="nota" id="infSub"></div>
+      <div id="boxTipoInf">
+        <label style="margin-top:10px">Tipo de informe</label>
+        <div class="seg" id="segTipoInf"><button data-v="mantenimiento" class="on">Mantenimiento</button><button data-v="servicio">Servicio / reparación</button></div>
+      </div>
+    </div>
+    <div class="card" id="cardMant">
+      <h3>Revisión por componente</h3>
+      <div class="nota">Toque una opción en lo que revisó y escriba una nota si hace falta. Lo que no revise, déjelo sin marcar.</div>
+      <div id="infComps"></div>
+    </div>
+    <div class="card">
+      <h3 id="lblInfDesc">Descripción del proceso y hallazgos</h3><textarea id="infDesc"></textarea>
+      <h3 style="margin-top:14px">Observaciones</h3><textarea id="infObs" style="min-height:56px"></textarea>
+    </div>
+    <div class="card">
+      <h3>Cotización: repuestos y arreglos por autorizar</h3>
+      <div class="nota">Al cliente se le pregunta cada ítem por separado. No los haga hasta que la orden salga 🟢 Aprobado. <b>Cada ítem lleva su código antes del concepto</b> (ej. R-0062 Pastillas).</div>
+      <div id="infItems"></div>
+      <button class="btn sec peq" id="btnInfItem" type="button">+ Agregar ítem</button>
+      <div class="total"><span>Total</span><span id="infTotal">$ 0</span></div>
+    </div>
+    <div class="card">
+      <h3>Fotos</h3>
+      <div class="fila">
+        <button class="btn sec" id="btnInfCam" type="button">📷 Tomar foto</button>
+        <button class="btn sec" id="btnInfGal" type="button">🖼️ Galería</button>
+      </div>
+      <input id="inInfCam" type="file" accept="image/*" capture="environment" class="oculto">
+      <input id="inInfGal" type="file" accept="image/*" multiple class="oculto">
+      <div class="fotos" id="infFotos"></div>
+    </div>
+    <div id="errInf" class="err"></div>
+    <button class="btn pri" id="btnEnviarInf">Enviar a revisión</button>
+    <div class="nota" style="text-align:center">El informe NO le llega al cliente: primero lo revisan Alexander o Tatiana.</div>
   </main>
 </div>
 
@@ -304,7 +457,67 @@
   <button class="btn sec" id="btnDescargarPdf">Descargar PDF</button>
   <div class="nota">Para imprimir: en el computador abra esta misma app › pestaña “Órdenes” › PDF.</div>
   </div>
+  <div class="estado-box oculto" id="boxCorreo"><span id="txtCorreo"></span>
+    <button class="btn sec peq oculto" id="btnReCorreo" type="button">Reintentar el correo</button></div>
+  <div class="paso oculto" id="boxAvisoTec"><div class="n" id="pt">📲</div><div><b>Avisar al técnico</b><div class="nota" id="txtAvisoTec"></div>
+    <button class="btn wa peq" id="btnAvisoTec">Enviar la orden de trabajo al técnico</button></div></div>
   <button class="btn pri" id="btnNuevo">Nuevo ingreso</button>
+</div></div>
+
+<div id="mEntrega" class="modal oculto"><div class="card">
+  <h3 id="enTitulo">Aviso de entrega</h3>
+  <div class="nota" id="enSub"></div>
+  <label for="enTexto">Mensaje para el cliente (puede corregirlo)</label>
+  <textarea id="enTexto" style="min-height:300px;font-size:14px"></textarea>
+  <div class="nota">Al enviarlo empiezan a contar los 2 días calendario; después se cobra el parqueadero de la orden de ingreso.</div>
+  <div class="nota oculto" id="enPapel"><b>Cliente sin WhatsApp:</b> llámelo, léale el valor y el horario, y registre el aviso.</div>
+  <div id="errEn" class="err"></div>
+  <button class="btn wa" id="btnEnWa">Abrir WhatsApp del cliente</button>
+  <button class="btn sec peq" id="btnEnRegistrar">Registrar el aviso sin abrir WhatsApp</button>
+  <button class="btn sec peq" id="btnEnCancelar">Cancelar</button>
+</div></div>
+
+<div id="mTecServ" class="modal oculto"><div class="card">
+  <div class="estado-box" style="background:#eaf3de;color:#27500a" id="tsTxt"></div>
+  <div class="paso"><div class="n" id="ts1">📲</div><div><b>Avisar a servicio técnico</b><div class="nota">Abre el WhatsApp de servicio técnico (300 347 9102) con el mensaje listo. Toque enviar.</div>
+    <button class="btn wa peq" id="btnTecServ">Abrir WhatsApp de servicio técnico</button></div></div>
+  <button class="btn pri" id="btnTecServListo">Listo</button>
+</div></div>
+
+<div id="mEnviarInf" class="modal oculto"><div class="card">
+  <div style="text-align:center;color:var(--gris);font-size:14px">Informe guardado · Orden</div>
+  <div class="numgrande" id="eiNum"></div>
+  <div class="paso" id="eiPasoWa"><div class="n" id="e1">1</div><div><b>Enviar el informe al cliente</b><div class="nota">Abre el chat del cliente con el mensaje.</div>
+    <button class="btn wa peq" id="btnEiWa">Abrir WhatsApp del cliente</button></div></div>
+  <div class="nota oculto" id="eiPapel">Cliente sin WhatsApp: llámelo y léale el informe (o envíelo por SMS). Luego registre su respuesta.</div>
+  <div class="paso" id="eiPasoFotos"><div class="n" id="e2">2</div><div><b>Enviar las fotos del informe</b><div class="nota" id="eiFotosTxt"></div>
+    <button class="btn wa peq" id="btnEiFotos">Compartir fotos</button></div></div>
+  <div class="paso" id="eiPasoResp"><div class="n" id="e3">3</div><div><b>Cuando el cliente responda</b><div class="nota">Informes › Esperando respuesta › ✅ Registrar respuesta: marque qué autorizó y adjunte la captura. Ahí mismo le avisa al técnico.</div></div></div>
+  <div class="paso oculto" id="eiPasoSigue"><div class="n" id="e4">3</div><div><b>Avisar al técnico que siga</b><div class="nota">El informe no tenía ítems por autorizar: la orden quedó 🟢 Aprobado.</div>
+    <button class="btn wa peq" id="btnEiTec">Avisar al técnico</button></div></div>
+  <button class="btn pri" id="btnEiListo">Listo</button>
+</div></div>
+
+<div id="mResp" class="modal oculto"><div class="card">
+  <h3 id="rpTitulo">Respuesta del cliente</h3>
+  <div class="nota" id="rpSub"></div>
+  <div id="rpForm">
+    <div id="rpItems"></div>
+    <div class="fila"><button class="btn sec peq" id="btnRpTodo" type="button">✅ Autorizó todo</button><button class="btn sec peq" id="btnRpNada" type="button">❌ No autorizó nada</button></div>
+    <div class="total"><span>Total autorizado</span><span id="rpTotal">$ 0</span></div>
+    <div class="nota" id="rpRevision"></div>
+    <button class="btn sec peq" id="btnRpCaptura" type="button">📸 Adjuntar captura de la respuesta</button>
+    <input id="inResp" type="file" accept="image/*" class="oculto">
+    <div class="nota" id="rpCapTxt">La captura queda guardada en la carpeta privada de la orden como prueba de lo que autorizó.</div>
+    <div id="errRp" class="err"></div>
+    <button class="btn pri" id="btnRpGuardar">Guardar respuesta</button>
+    <button class="btn sec" id="btnRpCancelar">Cancelar</button>
+  </div>
+  <div id="rpFin" class="oculto">
+    <div class="estado-box" id="rpFinTxt"></div>
+    <button class="btn wa" id="btnRpTec">📲 Avisar al técnico</button>
+    <button class="btn pri" id="btnRpListo">Listo</button>
+  </div>
 </div></div>
 
 <script>
@@ -332,17 +545,43 @@ function mockApi(o) {
   return new Promise(function (res, rej) {
     setTimeout(function () {
       var us = { '1111': 'Alexander González', '2222': 'Tatiana Cárdenas' }[o.pin];
-      if (!us) return rej(new Error('PIN incorrecto'));
-      if (o.accion === 'login') return res({ ok: true, usuario: us, siguiente: mock.ultimo + 1, formas: [] });
+      var tq = { '3333': 'ANDERSSON GARZON', '4444': 'CAMILO CARDENAS' }[o.pin];
+      if (!us && !tq) return rej(new Error('PIN incorrecto'));
+      if (tq) return mockTec(o, tq, res, rej);
+      if (o.accion === 'login') return res({ ok: true, usuario: us, rol: 'coordinador', siguiente: mock.ultimo + 1, formas: [], tecnicos: ['ANDERSSON GARZON', 'CAMILO CARDENAS'], celulares: { 'ANDERSSON GARZON': '3124412200', 'CAMILO CARDENAS': '3222200341' }, valorRevision: 60000 });
+      if (o.accion === 'informes') return res({ ok: true, valorRevision: 60000, informes: mock.infs.filter(function (x) { return x.ESTADO === 'POR REVISAR' || x.ESTADO === 'ENVIADO'; }).map(function (x) { var f = mockFila(x.NUMERO); return Object.assign({}, x, { datos: x.final || x.original, numFotos: x.fotos.length, previos: mockAprob(x.NUMERO, x.RONDA), orden: { NOMBRE: f.NOMBRE, TELEFONO: f.TELEFONO, CANAL: f.CANAL, TIPO_VEHICULO: f.TIPO_VEHICULO, MODELO: f.MODELO, COLOR: f.COLOR, MOTIVO: f.MOTIVO, ABONO: f.ABONO, TOTAL: f.TOTAL } }); }) });
+      if (o.accion === 'enviarInforme') { var ie = mockInf(o.id); ie.final = o.datos; ie.TEXTO_FINAL = o.texto; ie.REVISO = us; ie.FECHA_ENVIO = hoyISO() + ' 10:00'; var sin = !o.datos.items.length; ie.ESTADO = sin ? 'RESPONDIDO' : 'ENVIADO'; if (sin) ie.respuesta = []; mockFila(ie.NUMERO).ETAPA = sin ? 'APROBADO' : 'ESPERANDO CLIENTE'; return res({ ok: true, etapa: mockFila(ie.NUMERO).ETAPA }); }
+      if (o.accion === 'respuesta') { var ir = mockInf(o.id); ir.respuesta = o.aprobados; ir.ESTADO = 'RESPONDIDO'; var todos = mockAprob(ir.NUMERO); var fr2 = mockFila(ir.NUMERO); fr2.ETAPA = todos.length ? 'APROBADO' : 'NO APROBADO'; fr2.COBRO_REVISION = todos.length ? '' : '60000'; fr2.ITEMS_APROBADOS = JSON.stringify(todos); return res({ ok: true, etapa: fr2.ETAPA, aprobados: todos, valorRevision: 60000 }); }
+      if (o.accion === 'fotosInforme') return res({ ok: true, fotos: mockInf(o.id).fotos });
+      if (o.accion === 'avisoEntrega') { var fa = mockFila(o.numero); if (fa.ETAPA !== 'LISTO PARA ENTREGA') { fa.ETAPA = 'LISTO PARA ENTREGA'; fa.FECHA_AVISO_ENTREGA = o.fechaPrueba || (hoyISO() + ' 10:00'); } return res({ ok: true }); }
+      if (o.accion === 'entregar') { var fn = mockFila(o.numero); var dd2 = diasParq(fn.FECHA_AVISO_ENTREGA); fn.ETAPA = 'ENTREGADO'; fn.FECHA_ENTREGA = hoyISO() + ' 16:00'; fn.COBRO_PARQUEADERO = String(dd2 * tarifaParq(fn.TIPO_VEHICULO)); return res({ ok: true, dias: dd2, cobro: dd2 * tarifaParq(fn.TIPO_VEHICULO) }); }
+      if (o.accion === 'enviarCorreo') { var fc = mockFila(o.numero); if (!fc.EMAIL) return rej(new Error('La orden no tiene un correo válido')); fc.CORREO_ENVIADO = 'hoy a ' + fc.EMAIL; mock.correos = (mock.correos || []).concat([{ to: fc.EMAIL, texto: o.texto }]); return res({ ok: true, email: fc.EMAIL, pdf: !!fc.pdfCli, fotos: fc.NUM_ARCHIVOS, omitidos: 0 }); }
       if (o.accion === 'recibir') { var fr = mock.filas.filter(function (x) { return x.NUMERO == o.numero; })[0]; if (!fr || fr.ETAPA !== 'TURNO') return rej(new Error('La orden ya fue recibida')); Object.assign(fr, { ETAPA: 'EN TALLER', NOMBRE: o.datos.nombre, FECHA_LLEGADA: 'hoy', RECIBE_LLEGADA: us });
         return res({ ok: true, numero: fr.NUMERO, fecha: hoyISO(), recibe: us, carpeta: fr.CARPETA_URL }); }
-      if (o.accion === 'guardar') { mock.ultimo++; var dd = o.datos; var f = { NUMERO: mock.ultimo, ETAPA: dd.modo === 'turno' ? 'TURNO' : 'EN TALLER', TURNO_FECHA_HORA: dd.modo === 'turno' ? dd.turno : '', CEDULA: dd.cedula, EMAIL: dd.email, MODELO: dd.modelo, COLOR: dd.color, MOTIVO: dd.motivo, COTIZACION: dd.cotizacion, ITEMS: JSON.stringify(dd.items || []), TOTAL: dd.total === '' ? '' : String(dd.total), ABONO: dd.abono === '' ? '' : String(dd.abono), MEDIO_ABONO: dd.medioAbono, FECHA_HORA: new Date().toISOString().slice(0, 16).replace('T', ' '), FECHA: hoyISO(), RECIBE: us, NOMBRE: o.datos.nombre, TELEFONO: o.datos.telefono, TIPO_VEHICULO: o.datos.tipo, PDF_URL: '', CARPETA_URL: 'https://drive.google.com/drive/folders/DEMO', IMPRESA: '', ESTADO: 'ACTIVA', NUM_ARCHIVOS: 0, CANAL: o.datos.canal === 'papel' ? 'SIN WHATSAPP (FIRMA EN PAPEL)' : 'WHATSAPP' }; mock.filas.push(f);
+      if (o.accion === 'guardar') { mock.ultimo++; var dd = o.datos; var f = { NUMERO: mock.ultimo, ETAPA: dd.modo === 'turno' ? 'TURNO' : 'EN TALLER', TURNO_FECHA_HORA: dd.modo === 'turno' ? dd.turno : '', CEDULA: dd.cedula, EMAIL: dd.email, MODELO: dd.modelo, COLOR: dd.color, MOTIVO: dd.motivo, COTIZACION: dd.cotizacion, ITEMS: JSON.stringify(dd.items || []), TECNICO: dd.tecnico, ESTADO_FISICO: dd.estado, ELEMENTOS: dd.elementos, MOTOR_CHASIS: dd.motorChasis, TOTAL: dd.total === '' ? '' : String(dd.total), ABONO: dd.abono === '' ? '' : String(dd.abono), MEDIO_ABONO: dd.medioAbono, FECHA_HORA: new Date().toISOString().slice(0, 16).replace('T', ' '), FECHA: hoyISO(), RECIBE: us, NOMBRE: o.datos.nombre, TELEFONO: o.datos.telefono, TIPO_VEHICULO: o.datos.tipo, PDF_URL: '', CARPETA_URL: 'https://drive.google.com/drive/folders/DEMO', IMPRESA: '', ESTADO: 'ACTIVA', NUM_ARCHIVOS: 0, CANAL: o.datos.canal === 'papel' ? 'SIN WHATSAPP (FIRMA EN PAPEL)' : 'WHATSAPP' }; mock.filas.push(f);
         return res({ ok: true, numero: mock.ultimo, fecha: f.FECHA, recibe: us, carpeta: f.CARPETA_URL }); }
+      if (o.accion === 'subir' && o.informe) { if (o.esRespuesta) mockInf(o.informe).captura = 1; return res({ ok: true }); }
+      if (o.accion === 'subir' && o.esPdfCliente) { mockFila(o.numero).pdfCli = 1; return res({ ok: true }); }
       if (o.accion === 'subir') { var fi = mock.filas.filter(function (x) { return x.NUMERO == o.numero; })[0]; if (o.esPdf) fi.PDF_URL = 'https://drive.google.com/file/d/DEMO'; else if (o.esAcepto) { fi.CAPTURA_ACEPTO = 'https://drive.google.com/file/d/DEMO-ACEPTO'; fi.ACEPTACION = 'ACEPTÓ POR WHATSAPP (demo, con captura)'; } else fi.NUM_ARCHIVOS++; return res({ ok: true }); }
       if (o.accion === 'listar') return res({ ok: true, ordenes: mock.filas.slice().reverse() });
       if (o.accion === 'marcar') { mock.filas.forEach(function (x) { if (x.NUMERO == o.numero) x[o.campo] = (o.campo === 'ACEPTACION' && o.valor) ? 'ACEPTÓ POR WHATSAPP (demo)' : o.valor; }); return res({ ok: true }); }
     }, 350);
   });
+}
+mock.infs = [];
+function mockFila(n) { return mock.filas.filter(function (x) { return String(x.NUMERO) === String(n); })[0]; }
+function mockInf(id) { return mock.infs.filter(function (x) { return x.ID === id; })[0]; }
+function mockAprob(n, hasta) { var out = []; mock.infs.forEach(function (x) { if (String(x.NUMERO) !== String(n) || x.ESTADO !== 'RESPONDIDO' || (hasta && x.RONDA >= hasta)) return; ((x.final || x.original).items || []).forEach(function (i, k) { if (x.respuesta[k] === true) out.push(i); }); }); return out; }
+function mockTec(o, tq, res, rej) {
+  if (o.accion === 'login') return res({ ok: true, usuario: tq, rol: 'tecnico', waServicio: '3003479102' });
+  if (o.accion === 'misOrdenes') return res({ ok: true, ordenes: mock.filas.filter(function (f) { return f.TECNICO === tq && f.ESTADO !== 'ANULADA' && f.ETAPA !== 'TURNO'; }).map(function (f) {
+    return { NUMERO: f.NUMERO, FECHA: f.FECHA, CLIENTE: String(f.NOMBRE).split(' ')[0], TIPO_VEHICULO: f.TIPO_VEHICULO, MODELO: f.MODELO, COLOR: f.COLOR, MOTOR_CHASIS: f.MOTOR_CHASIS, MOTIVO: f.MOTIVO, ESTADO_FISICO: f.ESTADO_FISICO, ELEMENTOS: f.ELEMENTOS, COTIZACION: f.COTIZACION, ETAPA: f.ETAPA,
+      informes: mock.infs.filter(function (x) { return x.NUMERO == f.NUMERO; }).map(function (x) { return { ID: x.ID, RONDA: x.RONDA, TIPO: x.TIPO, ESTADO: x.ESTADO, datos: x.final || x.original, respuesta: x.respuesta || null }; }) };
+  }).reverse() });
+  if (o.accion === 'guardarInforme') { var f = mockFila(o.numero); if (!f || f.TECNICO !== tq) return rej(new Error('No asignada')); if (f.ETAPA === 'INFORME POR REVISAR' || f.ETAPA === 'ESPERANDO CLIENTE') return rej(new Error('Ya tiene un informe pendiente')); var r = mock.infs.filter(function (x) { return x.NUMERO == o.numero; }).length + 1; var id = 'I' + o.numero + '-' + r; mock.infs.push({ ID: id, NUMERO: f.NUMERO, RONDA: r, TIPO: o.tipo, TECNICO: tq, FECHA_TECNICO: hoyISO() + ' 09:30', original: o.datos, ESTADO: 'POR REVISAR', fotos: [] }); f.ETAPA = 'INFORME POR REVISAR'; return res({ ok: true, id: id, ronda: r }); }
+  if (o.accion === 'subir' && o.informe && !o.esRespuesta) { mockInf(o.informe).fotos.push({ nombre: o.nombre, mime: o.mime, b64: o.b64 }); return res({ ok: true }); }
+  if (o.accion === 'terminar') { var ft = mockFila(o.numero); if (ft.ETAPA !== 'APROBADO' && ft.ETAPA !== 'NO APROBADO') return rej(new Error('Sin respuesta del cliente')); ft.ETAPA = 'TERMINADO'; return res({ ok: true }); }
+  return rej(new Error('Esta opción es solo para el coordinador.'));
 }
 function hoyISO() { var d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
 
@@ -350,11 +589,14 @@ function hoyISO() { var d = new Date(); return d.getFullYear() + '-' + String(d.
 function entrar(pin, silencioso) {
   $('errLogin').textContent = '';
   return api({ accion: 'login', pin: pin }).then(function (r) {
-    S.pin = pin; S.usuario = r.usuario; S.siguiente = r.siguiente;
+    S.pin = pin; S.usuario = r.usuario; S.siguiente = r.siguiente; S.rol = r.rol || 'coordinador';
     try { localStorage.setItem('sea_pin', pin); } catch (e) {}
-    $('lblUsuario').textContent = r.usuario.split(' ')[0];
+    $('lblUsuario').textContent = titulo(r.usuario.split(' ')[0]);
+    aplicarRol();
+    if (S.rol === 'tecnico') { S.waServicio = r.waServicio || '3003479102'; mostrar('login', false); mostrar('app', true); cargarMis(); return; }
+    S.celTec = r.celulares || {}; S.valorRev = r.valorRevision || 60000;
     $('lblRecibe').textContent = r.usuario; $('lblSiguiente').textContent = r.siguiente;
-    ponerFormas(r.formas);
+    ponerFormas(r.formas); ponerTecnicos(r.tecnicos);
     revisarFaltantes();
     mostrar('login', false); mostrar('app', true);
   }).catch(function (e) {
@@ -372,13 +614,39 @@ function ponerFormas(lista) {
   $('lblFormas').textContent = '';
   try { localStorage.setItem('sea_formas', JSON.stringify(lista)); } catch (e) {}
 }
+function ponerTecnicos(lista) {   // lista de la hoja TECNICOS de Google (para agregar un técnico se escribe ahí)
+  if (!lista || !lista.length) return;
+  S.tecnicos = lista;
+  var sel = $('f_tecnico'), actual = sel.value;
+  sel.innerHTML = '<option value="">— Por asignar —</option>' + lista.map(function (x) { return '<option>' + esc(x) + '</option>'; }).join('');
+  if (lista.indexOf(actual) >= 0) sel.value = actual;
+}
 $('btnEntrar').onclick = function () { entrar($('pin').value.trim()); };
 $('pin').addEventListener('keydown', function (e) { if (e.key === 'Enter') entrar($('pin').value.trim()); });
-$('btnSalir').onclick = function () { try { localStorage.removeItem('sea_pin'); } catch (e) {} S.pin = null; $('pin').value = ''; mostrar('app', false); mostrar('login', true); };
+$('btnSalir').onclick = function () { try { localStorage.removeItem('sea_pin'); } catch (e) {} S.pin = null; S.rol = null; $('pin').value = ''; mostrar('app', false); mostrar('login', true); };
 
-/* ---------- pestañas ---------- */
-$('tabNuevo').onclick = function () { this.classList.add('on'); $('tabLista').classList.remove('on'); mostrar('vistaNuevo', true); mostrar('vistaLista', false); };
-$('tabLista').onclick = function () { this.classList.add('on'); $('tabNuevo').classList.remove('on'); mostrar('vistaNuevo', false); mostrar('vistaLista', true); cargarLista(); };
+/* ---------- pestañas y rol (coordinador / técnico) ---------- */
+var VISTAS = { Nuevo: 'vistaNuevo', Lista: 'vistaLista', Informes: 'vistaInformes', Tablero: 'vistaTablero' };
+function verTab(t) {
+  Object.keys(VISTAS).forEach(function (k) { $('tab' + k).classList.toggle('on', k === t); mostrar(VISTAS[k], k === t); });
+  mostrar('vistaRevisar', false);
+  if (t === 'Lista') cargarLista();
+  if (t === 'Informes') { cargarInformes(); window.scrollTo(0, 0); }
+  if (t === 'Tablero') { cargarTablero(); window.scrollTo(0, 0); }
+}
+$('tabNuevo').onclick = function () { verTab('Nuevo'); };
+$('tabLista').onclick = function () { verTab('Lista'); };
+$('tabInformes').onclick = function () { verTab('Informes'); };
+$('tabTablero').onclick = function () { verTab('Tablero'); };
+$('btnRecargarTab').onclick = function () { cargarTablero(); };
+$('filtroEtapa').onchange = function () { if (this.value) { $('soloFaltan').checked = false; $('soloTurnos').checked = false; } cargarLista(); };
+function aplicarRol() {
+  var t = S.rol === 'tecnico';
+  mostrar('navCoord', !t);
+  $('tituloApp').textContent = t ? 'SEA · Técnico' : 'SEA · Órdenes de ingreso';
+  ['vistaNuevo', 'vistaLista', 'vistaInformes', 'vistaTablero', 'vistaRevisar', 'vistaMis', 'vistaFormInf'].forEach(function (v) { mostrar(v, false); });
+  if (t) mostrar('vistaMis', true); else verTab('Nuevo');
+}
 
 /* ---------- controles del formulario ---------- */
 function segmento(id, clave) {
@@ -486,7 +754,7 @@ function leerForm() {
     motivo: $('f_motivo').value.trim(), estado: $('f_estado').value.trim(), elementos: $('f_elementos').value.trim(),
     cotizacion: $('f_cotizacion').value.trim(), items: leerItems(),
     total: $('f_total').value === '' ? '' : Number($('f_total').value), abono: $('f_abono').value === '' ? '' : Number($('f_abono').value),
-    medioAbono: $('f_medio').value,
+    medioAbono: $('f_medio').value, tecnico: $('f_tecnico').value, motorChasis: $('f_motor').value.trim().toUpperCase(),
     separaTurno: modo() !== 'ingreso', enTaller: modo() !== 'turno', canal: S.canal, modo: modo(),
     turno: modo() === 'turno' ? ($('f_turnoFecha').value + ' ' + $('f_turnoHora').value).trim() : (S.recibir ? S.recibir.TURNO_FECHA_HORA : '')
   };
@@ -498,6 +766,7 @@ $('btnGuardar').onclick = function () {
   if (d.canal === 'papel' && d.telefono && !/^(57)?\d{7,10}$/.test(d.telefono)) e.push('un teléfono válido (o déjelo vacío)');
   if (!d.tipo) e.push('el tipo de vehículo');
   if (!d.motivo) e.push('el motivo de ingreso');
+  if (d.email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(d.email)) e.push('un e-mail válido (o déjelo vacío)');
   if (d.abono !== '' && d.abono > 0 && !d.medioAbono) e.push('el medio del abono');
   if (d.modo === 'turno' && (!$('f_turnoFecha').value || !$('f_turnoHora').value)) e.push('la fecha y la hora del turno');
   if (e.length) { $('errForm').textContent = 'Falta: ' + e.join(', ') + '.'; return; }
@@ -518,6 +787,7 @@ function b64(blob) { return new Promise(function (res, rej) { var r = new FileRe
 
 /* Proceso en pasos; si algo falla se puede reintentar desde donde quedó, sin crear otra orden */
 function procesar() {
+  $('btnReintentar').onclick = procesar;
   var d = S.pendiente;
   S.proc = S.proc && S.proc.datos === d ? S.proc : { datos: d, numero: null, pdf: null, subidos: {}, pdfSubido: false };
   var P = S.proc;
@@ -537,8 +807,10 @@ function procesar() {
     if (!P.pdf) {
       progreso(25, 'Generando PDF…');
       var datos = Object.assign({}, d, { numero: P.numero, fecha: P.fecha, recibe: P.recibe });
-      var doc = construirPDFOrden(window.jspdf.jsPDF, datos, LOGO);
-      P.pdf = new File([doc.output('blob')], 'Orden_ingreso_' + P.numero + '.pdf', { type: 'application/pdf' });
+      var doc = construirPDFOrden(window.jspdf.jsPDF, datos, LOGO);              // hoja completa: ingreso + orden de trabajo (imprimir / Drive)
+      P.pdf = new File([doc.output('blob')], 'Orden_ingreso_y_trabajo_' + P.numero + '.pdf', { type: 'application/pdf' });
+      var docC = construirPDFOrden(window.jspdf.jsPDF, datos, LOGO, true);       // solo orden de ingreso: la que recibe el cliente
+      P.pdfCliente = new File([docC.output('blob')], 'Orden_ingreso_' + P.numero + '.pdf', { type: 'application/pdf' });
     }
     if (P.pdfSubido) return;
     progreso(35, 'Subiendo PDF…');
@@ -563,6 +835,15 @@ function procesar() {
       return seq;
     });
   });
+  cadena = cadena.then(function () {
+    if (d.modo === 'turno' || !d.email || P.correo) return;
+    var paso = P.pdfCliSubido ? Promise.resolve() : (progreso(96, 'Enviando copia al correo del cliente…'), b64(P.pdfCliente).then(function (x) {
+      return api({ accion: 'subir', numero: P.numero, esPdfCliente: true, nombre: P.pdfCliente.name, mime: 'application/pdf', b64: x });
+    }).then(function () { P.pdfCliSubido = true; }));
+    return paso.then(function () { return api({ accion: 'enviarCorreo', numero: P.numero, texto: mensajeCorreo(P) }); })
+      .then(function (r) { P.correo = r; P.correoErr = ''; })
+      .catch(function (e) { P.correoErr = e.message; });   // el correo no detiene la orden: se puede reenviar después
+  });
   cadena.then(function () {
     progreso(100, 'Listo');
     S.ultima = P; S.proc = null;
@@ -576,9 +857,9 @@ $('btnReintentar').onclick = procesar;
 
 /* ---------- WhatsApp ---------- */
 function mensaje(P) {
-  var d = P.datos, o = (P.trato || S.trato) === 'o';
-  return '📢 ' + (o ? 'Estimado ' : 'Estimada ') + d.nombre + '\n\n' +
-    (o ? 'Bienvenido' : 'Bienvenida') + ' al Centro de Servicio Técnico 🚲⚙️  SEA\n' +
+  var d = P.datos, tr = P.trato || S.trato, o = tr === 'o', x = tr === 'x';   // x = sin dato (reenvío desde la lista)
+  return '📢 ' + (x ? 'Estimado(a) ' : (o ? 'Estimado ' : 'Estimada ')) + d.nombre + '\n\n' +
+    (x ? 'Bienvenido(a)' : (o ? 'Bienvenido' : 'Bienvenida')) + ' al Centro de Servicio Técnico 🚲⚙️  SEA\n' +
     'Adjuntamos las imágenes del ingreso de su vehículo 📸, registrando su estado actual al momento de la recepción.\n\n' +
     '🔹 Orden de ingreso No. ' + P.numero + '\n' +
     '🔹 Nombre Persona que realiza el ingreso: ' + P.recibe + '\n\n' +
@@ -588,6 +869,21 @@ function mensaje(P) {
     '• Según la ley 1480 de 2011 - artículo 8. "La prestación de servicios que suponen la entrega del bien para la reparación del mismo podrá ser prestada sin garantía, circunstancia que debe ser informada y aceptada por escrito claramente por el consumidor". Por tal razón se le informa que la garantía del servicio prestado, es de 5 días calendario a partir de la entrega del bien aquí reportado.\n' +
     '• Autoriza a SEA a usar sus datos personales (nombre, cédula, teléfono, correo y fotos del vehículo) únicamente para gestionar este servicio, según la Ley 1581 de 2012. Puede consultarlos, corregirlos o pedir que se eliminen escribiendo a infoingenierohagd@gmail.com.\n\n' +
     '✅ Por favor responda *ACEPTO* a este mensaje para confirmar que está de acuerdo.';
+}
+/* copia por correo: el mismo mensaje de WhatsApp, sin los asteriscos de negrilla */
+function mensajeCorreo(P) {
+  var t = mensaje(P).replace(/\*/g, '');
+  if (P.datos.canal === 'papel') t = t.replace(/✅ Por favor responda ACEPTO[^\n]*$/, 'Esta es la copia de la orden de ingreso que usted firmó en nuestras instalaciones.');
+  else t = t.replace(/✅ Por favor responda ACEPTO[^\n]*$/, '✅ Por favor responda ACEPTO a nuestro WhatsApp o a este correo para confirmar que está de acuerdo.');
+  return t.replace('Adjuntamos las imágenes del ingreso de su vehículo 📸', 'Adjuntamos la orden de ingreso en PDF y las imágenes del ingreso de su vehículo 📸') +
+    '\n\n📍 Av. Suba cra 50 # 91 - 82 - Bogotá · 📞 WhatsApp 300 347 9102';
+}
+function pintarCorreo(P) {
+  var d = P.datos, box = $('boxCorreo');
+  mostrar('boxCorreo', !!d.email && d.modo !== 'turno');
+  if (!d.email) return;
+  if (P.correo) { box.style.background = '#e5f4e4'; box.style.color = '#27500a'; $('txtCorreo').textContent = '📧 Copia enviada a ' + P.correo.email + ' (' + (P.correo.pdf ? 'orden de ingreso en PDF' : 'sin PDF') + ' + ' + P.correo.fotos + ' foto(s)' + (P.correo.omitidos ? '; ' + P.correo.omitidos + ' video(s) pesado(s) solo por WhatsApp' : '') + ').'; mostrar('btnReCorreo', false); }
+  else { box.style.background = '#fff3cd'; box.style.color = '#7a5b00'; $('txtCorreo').textContent = '📧 No se pudo enviar la copia a ' + d.email + ': ' + (P.correoErr || 'error') + '.'; mostrar('btnReCorreo', true); }
 }
 function fmtTurno(s) {   // "2026-11-21 10:00" -> "viernes 21 de noviembre de 2026, 10:00 a. m."
   var m = String(s || '').match(/(\d{4})-(\d{2})-(\d{2})\s+(\d{1,2}):(\d{2})/);
@@ -620,7 +916,7 @@ function abrirListo(P) {
     $('txtTurnoListo').textContent = fmtTurno(P.datos.turno);
     var sinWa = P.datos.canal === 'papel';
     mostrar('pasoTurnoWa', !sinWa); mostrar('txtTurnoPapel', sinWa); $('t1').classList.remove('ok');
-    mostrar('pasosWa', false); mostrar('pasosPapel', false); mostrar('avisoVideo', false);
+    mostrar('pasosWa', false); mostrar('pasosPapel', false); mostrar('avisoVideo', false); mostrar('boxAvisoTec', false); mostrar('boxCorreo', false);
     $('listoNum').textContent = P.numero; mostrar('mListo', true);
     return;
   }
@@ -635,8 +931,19 @@ function abrirListo(P) {
   $('avisoVideo').textContent = grandes ? grandes + ' video(s) muy pesado(s) (más de 35 MB) no se guardaron en Drive: compártalos por WhatsApp y quedan solo en el celular.' : '';
   mostrar('avisoVideo', grandes > 0);
   mostrar('btnWaFotos', hayFotos); $('btnWaFotos').parentNode.parentNode.classList.toggle('oculto', !hayFotos);
+  var tec = P.datos.tecnico; $('pt').classList.remove('ok');
+  mostrar('boxAvisoTec', !!tec);
+  if (tec) $('txtAvisoTec').textContent = titulo(tec) + ' recibe por WhatsApp el número de orden, el vehículo, el motivo y el estado físico (sin datos personales del cliente). Le queda en la app › Mis órdenes.';
+  pintarCorreo(P);
   mostrar('mListo', true);
 }
+$('btnReCorreo').onclick = function () {
+  var P = S.ultima, b = this; b.disabled = true; b.textContent = 'Enviando…';
+  var paso = P.pdfCliSubido ? Promise.resolve() : b64(P.pdfCliente).then(function (x) { return api({ accion: 'subir', numero: P.numero, esPdfCliente: true, nombre: P.pdfCliente.name, mime: 'application/pdf', b64: x }); }).then(function () { P.pdfCliSubido = true; });
+  paso.then(function () { return api({ accion: 'enviarCorreo', numero: P.numero, texto: mensajeCorreo(P) }); })
+    .then(function (r) { P.correo = r; }).catch(function (e) { P.correoErr = e.message; })
+    .then(function () { b.disabled = false; b.textContent = 'Reintentar el correo'; pintarCorreo(P); });
+};
 $('btnWaTurno').onclick = function () {
   var P = S.ultima; $('t1').classList.add('ok');
   window.open('https://api.whatsapp.com/send?phone=' + telWa(P.datos.telefono) + '&text=' + encodeURIComponent(mensajeTurno(P)), '_blank');
@@ -661,7 +968,7 @@ function compartir(files, texto, paso) {
   }
 }
 $('btnWaFotos').onclick = function () { compartir(S.ultima.files, 'Fotos del ingreso - Orden No. ' + S.ultima.numero + ' - SEA', 'p2'); };
-$('btnWaPdf').onclick = function () { compartir([S.ultima.pdf], 'Orden de ingreso No. ' + S.ultima.numero + ' - SEA', 'p3'); };
+$('btnWaPdf').onclick = function () { compartir([S.ultima.pdfCliente || S.ultima.pdf], 'Orden de ingreso No. ' + S.ultima.numero + ' - SEA', 'p3'); };
 function descargar(f) { var a = document.createElement('a'); a.href = URL.createObjectURL(f); a.download = f.name; document.body.appendChild(a); a.click(); a.remove(); }
 /* Captura del ACEPTO: se sube a la carpeta privada de la orden y marca la aceptación */
 var aceptoDestino = null;
@@ -690,7 +997,7 @@ $('btnNuevo').onclick = function () { mostrar('mListo', false); window.scrollTo(
 function limpiarForm() {
   S.recibir = null;
   $('segTurno').querySelector('[data-v=taller]').click();
-  ['f_nombre', 'f_telefono', 'f_cedula', 'f_email', 'f_tipo', 'f_modelo', 'f_color', 'f_motivo', 'f_estado', 'f_elementos', 'f_cotizacion', 'f_total', 'f_abono', 'f_medio', 'f_turnoFecha', 'f_turnoHora']
+  ['f_nombre', 'f_telefono', 'f_cedula', 'f_email', 'f_tipo', 'f_modelo', 'f_color', 'f_motivo', 'f_estado', 'f_elementos', 'f_cotizacion', 'f_total', 'f_abono', 'f_medio', 'f_turnoFecha', 'f_turnoHora', 'f_tecnico', 'f_motor']
     .forEach(function (id) { $(id).value = ''; });
   $('items').innerHTML = '';
   $('segCanal').querySelector('[data-v=whatsapp]').click();
@@ -706,7 +1013,8 @@ function recibirTurno(o) {
   S.recibir = o; o.abonoPrevio = Number(numDe(o.ABONO) || 0);
   $('f_nombre').value = o.NOMBRE || ''; $('f_telefono').value = o.TELEFONO || ''; $('f_cedula').value = o.CEDULA || ''; $('f_email').value = o.EMAIL || '';
   $('f_tipo').value = o.TIPO_VEHICULO || ''; $('f_modelo').value = o.MODELO || ''; $('f_color').value = o.COLOR || '';
-  $('f_motivo').value = o.MOTIVO || ''; $('f_cotizacion').value = o.COTIZACION || '';
+  $('f_motivo').value = o.MOTIVO || ''; $('f_cotizacion').value = o.COTIZACION || ''; $('f_motor').value = o.MOTOR_CHASIS || '';
+  if (o.TECNICO) { if (![].some.call($('f_tecnico').options, function (x) { return x.value === o.TECNICO; })) $('f_tecnico').insertAdjacentHTML('beforeend', '<option>' + esc(o.TECNICO) + '</option>'); $('f_tecnico').value = o.TECNICO; }
   $('segCanal').querySelector(esPapel(o) ? '[data-v=papel]' : '[data-v=whatsapp]').click();
   try { JSON.parse(o.ITEMS || '[]').forEach(function (it) { agregarItem(); var r = $('items').lastChild; r.querySelector('.i_con').value = (it.codigo ? it.codigo + ' ' : '') + (it.concepto || ''); r.querySelector('.i_can').value = it.cantidad || 1; r.querySelector('.i_val').value = it.valor || ''; }); } catch (e) {}
   $('f_total').value = numDe(o.TOTAL); $('f_abono').value = numDe(o.ABONO);
@@ -719,6 +1027,14 @@ function recibirTurno(o) {
 $('btnCancelarRecibir').onclick = function () { limpiarForm(); };
 
 /* ---------- lista de órdenes (sirve en el PC para imprimir) ---------- */
+function infoEntrega(o) {
+  if (o.ETAPA === 'LISTO PARA ENTREGA' && o.FECHA_AVISO_ENTREGA) {
+    var d = diasParq(o.FECHA_AVISO_ENTREGA);
+    return '<br><span style="color:' + (d ? '#a32d2d' : '#0c447c') + '">📦 Avisado ' + txtDias(diasDesde(o.FECHA_AVISO_ENTREGA)) + (d ? ' · 🅿️ parqueadero ' + d + ' día(s) = ' + fmt(d * tarifaParq(o.TIPO_VEHICULO)) : ' · sin parqueadero aún') + '</span>';
+  }
+  if (o.ETAPA === 'ENTREGADO') return '<br>🏁 Entregado ' + esc(o.FECHA_ENTREGA) + (numDe(o.COBRO_PARQUEADERO) ? ' · parqueadero ' + fmt(numDe(o.COBRO_PARQUEADERO)) : '');
+  return '';
+}
 function esTurnoPend(o) { return o.ETAPA === 'TURNO' && o.ESTADO !== 'ANULADA'; }
 function esPapel(o) { return /PAPEL/.test(o.CANAL || ''); }
 function faltaAcepto(o) { return o.ESTADO !== 'ANULADA' && o.ETAPA !== 'TURNO' && !o.CAPTURA_ACEPTO; }
@@ -742,6 +1058,7 @@ function revisarFaltantes() {   // aviso de órdenes sin captura del ACEPTO
     var f = r.ordenes.filter(faltaAcepto);
     pintarAviso(f); pintarTurnos(r.ordenes);
   }).catch(function () {});
+  revisarInformes();
 }
 $('btnVerFaltan').onclick = function () { $('soloFaltan').checked = true; $('tabLista').onclick.call($('tabLista')); };
 $('soloFaltan').onchange = function () { if (this.checked) $('soloTurnos').checked = false; cargarLista(); };
@@ -749,10 +1066,12 @@ $('soloTurnos').onchange = function () { if (this.checked) $('soloFaltan').check
 $('btnVerTurnos').onclick = function () { $('soloTurnos').checked = true; $('soloFaltan').checked = false; $('tabLista').onclick.call($('tabLista')); };
 function cargarLista() {
   $('lista').innerHTML = '<div class="nota">Cargando…</div>';
-  api({ accion: 'listar', cantidad: 60 }).then(function (r) {
-    var lista = $('soloFaltan').checked ? r.ordenes.filter(faltaAcepto) : ($('soloTurnos').checked ? r.ordenes.filter(esTurnoPend) : r.ordenes);
+  api({ accion: 'listar', cantidad: 300 }).then(function (r) {
+    var fe = $('filtroEtapa').value;
+    var lista = $('soloFaltan').checked ? r.ordenes.filter(faltaAcepto) : ($('soloTurnos').checked ? r.ordenes.filter(esTurnoPend) :
+      (fe ? r.ordenes.filter(function (o) { return o.ESTADO !== 'ANULADA' && (o.ETAPA || 'EN TALLER') === fe; }) : r.ordenes.slice(0, 80)));
     pintarAviso(r.ordenes.filter(faltaAcepto)); pintarTurnos(r.ordenes);
-    if (!lista.length) { $('lista').innerHTML = '<div class="nota">' + ($('soloFaltan').checked ? 'Todas las órdenes tienen su aceptación. ✓' : ($('soloTurnos').checked ? 'No hay turnos pendientes.' : 'Aún no hay órdenes.')) + '</div>'; return; }
+    if (!lista.length) { $('lista').innerHTML = '<div class="nota">' + ($('soloFaltan').checked ? 'Todas las órdenes tienen su aceptación. ✓' : ($('soloTurnos').checked ? 'No hay turnos pendientes.' : (fe ? 'No hay órdenes en esa etapa.' : 'Aún no hay órdenes.'))) + '</div>'; return; }
     $('lista').innerHTML = '';
     lista.forEach(function (o) {
       var d = document.createElement('div'); d.className = 'orden' + (o.ESTADO === 'ANULADA' ? ' anulada' : '');
@@ -765,11 +1084,36 @@ function cargarLista() {
         $('lista').appendChild(d);
         return;
       }
-      d.innerHTML = '<div class="num">' + o.NUMERO + '</div><div class="info"><div>' + esc(o.NOMBRE) + (o.CAPTURA_ACEPTO ? '<span class="badge">' + (esPapel(o) ? '✓ firmó 📸' : '✓ aceptó 📸') + '</span>' : '<span class="badge" style="background:#fff3cd;color:#7a5b00">' + (esPapel(o) ? '⚠️ falta foto firmada' : '⚠️ falta captura ACEPTO') + '</span>') + (o.IMPRESA ? '<span class="badge">✓ impresa</span>' : '') + (o.ESTADO === 'ANULADA' ? '<span class="badge">anulada</span>' : '') + '</div><div>' + esc(o.FECHA_HORA) + ' · ' + esc(o.TIPO_VEHICULO) + ' · ' + esc(o.RECIBE) + '</div></div>' +
+      d.innerHTML = '<div class="num">' + o.NUMERO + '</div><div class="info"><div>' + esc(o.NOMBRE) + (o.CAPTURA_ACEPTO ? '<span class="badge">' + (esPapel(o) ? '✓ firmó 📸' : '✓ aceptó 📸') + '</span>' : '<span class="badge" style="background:#fff3cd;color:#7a5b00">' + (esPapel(o) ? '⚠️ falta foto firmada' : '⚠️ falta captura ACEPTO') + '</span>') + badgeEtapa(o.ESTADO === 'ANULADA' ? '' : o.ETAPA) + (o.IMPRESA ? '<span class="badge">✓ impresa</span>' : '') + (o.ESTADO === 'ANULADA' ? '<span class="badge">anulada</span>' : '') + '</div><div>' + esc(o.FECHA_HORA) + ' · ' + esc(o.TIPO_VEHICULO) + ' · ' + esc(o.RECIBE) + ' · 👨‍🔧 ' + esc(o.TECNICO || 'sin técnico') + infoEntrega(o) + '</div></div>' +
         '<div class="acc">' + (o.PDF_URL ? '<a href="' + esc(o.PDF_URL) + '" target="_blank">PDF</a>' : '') + (o.CARPETA_URL ? '<a href="' + esc(o.CARPETA_URL) + '" target="_blank">Fotos</a>' : '') +
         (o.CAPTURA_ACEPTO ? '<a href="' + esc(o.CAPTURA_ACEPTO) + '" target="_blank">Captura</a>' : '') +
         '<button data-a="acp">' + (o.ACEPTACION ? 'Quitar aceptación' : (esPapel(o) ? '📸 Firmada' : '📸 Aceptó')) + '</button>' +
+        '<button data-a="tec">👨‍🔧 Técnico</button>' + (o.TECNICO && o.ESTADO !== 'ANULADA' ? '<button data-a="avt">📲 Avisar técnico</button>' : '') +
+        (o.ESTADO !== 'ANULADA' && (['APROBADO', 'NO APROBADO', 'TERMINADO'].indexOf(o.ETAPA) >= 0 || (o.ETAPA === 'EN TALLER' && !o.ETAPA_FECHA)) ? '<button data-a="ent">📦 Aviso de entrega</button>' : '') +
+        (o.ESTADO !== 'ANULADA' && o.ETAPA === 'LISTO PARA ENTREGA' ? '<button data-a="ent">💬 Reenviar aviso</button><button data-a="fin">🏁 Entregado</button>' : '') +
+        (o.EMAIL && o.ESTADO !== 'ANULADA' ? '<button data-a="mail">📧 ' + (o.CORREO_ENVIADO ? 'Reenviar correo' : 'Enviar correo') + '</button>' : '') +
         '<button data-a="imp">' + (o.IMPRESA ? 'Desmarcar' : '✓ Impresa') + '</button>' + (o.ESTADO !== 'ANULADA' ? '<button data-a="anu">Anular</button>' : '') + '</div>';
+      d.querySelector('[data-a=tec]').onclick = function () {
+        var l = S.tecnicos || [].slice.call($('f_tecnico').options).map(function (x) { return x.value; }).filter(Boolean);
+        var r2 = prompt('Técnico para la orden ' + o.NUMERO + ' (actual: ' + (o.TECNICO || 'sin asignar') + ')\n\n' + l.map(function (x, i) { return (i + 1) + ' = ' + x; }).join('\n') + '\n0 = quitar\n\nEscriba el número:');
+        if (r2 === null || r2.trim() === '') return;
+        var n = Number(r2), val = n === 0 ? '' : l[n - 1];
+        if (n !== 0 && !val) { alert('Número no válido.'); return; }
+        api({ accion: 'marcar', numero: o.NUMERO, campo: 'TECNICO', valor: val }).then(cargarLista);
+      };
+      var be = d.querySelector('[data-a=ent]'), bf = d.querySelector('[data-a=fin]');
+      if (be) be.onclick = function () { abrirEntrega(o); };
+      if (bf) bf.onclick = function () { marcarEntregado(o); };
+      var ml = d.querySelector('[data-a=mail]');
+      if (ml) ml.onclick = function () {
+        if (!confirm((o.CORREO_ENVIADO ? 'Ya se envió: ' + o.CORREO_ENVIADO + '\n\n' : '') + '¿Enviar la orden de ingreso y las fotos de la orden ' + o.NUMERO + ' a ' + o.EMAIL + '?')) return;
+        var P = { numero: o.NUMERO, recibe: o.RECIBE, trato: 'x', datos: { nombre: o.NOMBRE, canal: esPapel(o) ? 'papel' : 'whatsapp' } };
+        ml.disabled = true; ml.textContent = 'Enviando…';
+        api({ accion: 'enviarCorreo', numero: o.NUMERO, texto: mensajeCorreo(P) }).then(function (r) { alert('✓ Enviado a ' + r.email + (r.pdf ? '' : ' (sin PDF: esta orden es anterior a los correos; envíelo por WhatsApp)') + '.'); cargarLista(); })
+          .catch(function (e) { alert('No se pudo enviar: ' + e.message); ml.disabled = false; ml.textContent = '📧 Enviar correo'; });
+      };
+      var avt = d.querySelector('[data-a=avt]');
+      if (avt) avt.onclick = function () { avisarTecnico(o.TECNICO, msgTecOrden(ordenParaTec(o))); };
       d.querySelector('[data-a=imp]').onclick = function () { api({ accion: 'marcar', numero: o.NUMERO, campo: 'IMPRESA', valor: o.IMPRESA ? '' : 'SI' }).then(cargarLista); };
       d.querySelector('[data-a=acp]').onclick = function () {
         if (o.ACEPTACION) { if (confirm('¿Quitar la aceptación de la orden ' + o.NUMERO + '?')) api({ accion: 'marcar', numero: o.NUMERO, campo: 'ACEPTACION', valor: '' }).then(cargarLista); }
@@ -783,18 +1127,623 @@ function cargarLista() {
 }
 $('btnRecargar').onclick = cargarLista;
 
+/* =================================================================
+   INFORMES DE LOS TÉCNICOS · REVISIÓN · RESPUESTA DEL CLIENTE
+   ================================================================= */
+var ETQ = {
+  'EN TALLER': ['🔧 Por diagnosticar', '#e7f1fb', '#0c447c', 'Revise el vehículo y haga el informe con la cotización. No haga trabajos que requieran autorización todavía.'],
+  'INFORME POR REVISAR': ['📝 Informe por revisar', '#eeedfe', '#3c3489', 'Alexander o Tatiana están revisando su informe para enviarlo al cliente.'],
+  'ESPERANDO CLIENTE': ['🟡 Esperando al cliente', '#fff3cd', '#7a5b00', 'El informe ya se le envió al cliente. NO avance con los ítems de la cotización hasta que autorice.'],
+  'APROBADO': ['🟢 Aprobado', '#eaf3de', '#27500a', 'Haga SOLO lo autorizado (✅). Si encuentra algo más, registre un hallazgo nuevo para que el cliente lo autorice.'],
+  'NO APROBADO': ['🔴 No aprobado', '#fde7e7', '#a32d2d', 'El cliente no autorizó la reparación. No haga trabajos: deje el vehículo armado y listo para entrega.'],
+  'TERMINADO': ['✅ Terminado', '#e1f5ee', '#085041', 'Listo para el aviso de entrega.']
+};
+function badgeEtapa(e) { var x = ETQ[e]; return x ? '<span class="badge" style="background:' + x[1] + ';color:' + x[2] + '">' + x[0] + '</span>' : ''; }
+var COMPONENTES = [['Freno delantero', 'pastillas o bandas, guaya, líquido'], ['Freno trasero', 'pastillas o bandas, guaya, líquido'],
+  ['Ruedas y rodamientos', 'llantas, neumáticos, rines, rodamientos'], ['Motor', ''], ['Suspensión y dirección', ''], ['Chasis y carenados', ''],
+  ['Sistema eléctrico', 'luces, pito, acelerador, controlador, cableado'], ['Batería', 'voltaje, autonomía, conectores'], ['Limpieza', '']];
+var EST = { ok: ['✅', 'En buen estado'], ajuste: ['⚠️', 'Requiere ajuste'], cambio: ['🔴', 'Requiere cambio'] };
+function appUrl() { return location.origin + location.pathname; }
+function titulo(s) { return String(s || '').toLowerCase().replace(/(^|\s)\S/g, function (c) { return c.toUpperCase(); }); }
+function sumaItems(l) { return (l || []).reduce(function (a, i) { return a + Number(i.cantidad || 1) * Number(i.valor || 0); }, 0); }
+function linItem(i, conPrecio) { return (i.concepto || '') + (Number(i.cantidad) > 1 ? ' x' + i.cantidad : '') + (conPrecio ? ' – ' + fmt(Number(i.cantidad || 1) * Number(i.valor || 0)) : ''); }
+function waA(tel, texto) { window.open('https://api.whatsapp.com/send?phone=' + telWa(tel) + '&text=' + encodeURIComponent(texto), '_blank'); }
+function boton(cont, txt, cls, fn) { var b = document.createElement('button'); b.type = 'button'; b.className = 'btn ' + cls + ' peq'; b.textContent = txt; b.onclick = fn; cont.appendChild(b); return b; }
+function diasDesde(s) { var m = String(s || '').match(/(\d{4})-(\d{2})-(\d{2})/); if (!m) return 0; var d = new Date(+m[1], +m[2] - 1, +m[3]), h = new Date(); h.setHours(0, 0, 0, 0); return Math.max(0, Math.round((h - d) / 86400000)); }
+function txtDias(n) { return n === 0 ? 'hoy' : (n === 1 ? 'hace 1 día' : 'hace ' + n + ' días'); }
+function b64aFile(f) { var bin = atob(f.b64), u = new Uint8Array(bin.length); for (var i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return new File([u], f.nombre, { type: f.mime || 'image/jpeg' }); }
+
+/* ---------- componentes (✅ ⚠️ 🔴 + nota) e ítems: los usan el técnico y el coordinador ---------- */
+function pintarComponentes(cont, comps, alCambiar) {
+  cont.innerHTML = '';
+  comps.forEach(function (c) {
+    var d = document.createElement('div'); d.className = 'comp';
+    d.innerHTML = '<div class="nom">' + esc(c.nombre) + '</div><div class="est3"><button type="button" data-v="ok">✅ Bien</button><button type="button" data-v="ajuste">⚠️ Ajuste</button><button type="button" data-v="cambio">🔴 Cambio</button></div>' +
+      '<input type="text" placeholder="' + esc(c.ayuda ? 'Nota: ' + c.ayuda : 'Nota (opcional)') + '">';
+    d.querySelectorAll('.est3 button').forEach(function (b) {
+      if (b.dataset.v === c.estado) b.classList.add('on');
+      b.onclick = function () {
+        var estaba = b.classList.contains('on');
+        d.querySelectorAll('.est3 button').forEach(function (x) { x.classList.remove('on'); });
+        if (estaba) c.estado = ''; else { b.classList.add('on'); c.estado = b.dataset.v; }
+        if (alCambiar) alCambiar();
+      };
+    });
+    var inp = d.querySelector('input'); inp.value = c.nota || '';
+    inp.oninput = function () { c.nota = inp.value; if (alCambiar) alCambiar(); };
+    cont.appendChild(d);
+  });
+}
+function pintarItems(cont, items, alCambiar) {
+  cont.innerHTML = '';
+  items.forEach(function (it, k) {
+    var d = document.createElement('div'); d.className = 'item';
+    d.innerHTML = '<input placeholder="Código y concepto (R-0062 Pastillas)" class="i_con"><input type="number" inputmode="numeric" placeholder="Cant" class="i_can"><input type="number" inputmode="numeric" placeholder="Valor unit." class="i_val"><button type="button">×</button>';
+    var x = d.querySelectorAll('input');
+    x[0].value = (it.codigo ? it.codigo + ' ' : '') + (it.concepto || ''); x[1].value = it.cantidad || 1; x[2].value = it.valor || '';
+    x[0].oninput = function () { var p = separarCodigo(x[0].value); it.codigo = p.codigo; it.concepto = p.concepto; if (alCambiar) alCambiar(); };
+    x[1].oninput = function () { it.cantidad = Number(x[1].value || 0); if (alCambiar) alCambiar(); };
+    x[2].oninput = function () { it.valor = Number(x[2].value || 0); if (alCambiar) alCambiar(); };
+    d.querySelector('button').onclick = function () { items.splice(k, 1); pintarItems(cont, items, alCambiar); if (alCambiar) alCambiar(); };
+    cont.appendChild(d);
+  });
+}
+/* "R-0062 Pastillas" → código R-0062 + concepto Pastillas (igual que en la cotización del ingreso; el código es el de la macro) */
+function separarCodigo(t) { t = String(t || '').trim(); var m = t.match(/^([A-Z]-\d{3,5})\s*(.*)$/i); return m ? { codigo: m[1].toUpperCase(), concepto: m[2].trim() } : { codigo: '', concepto: t }; }
+function limpiarItems(l) {
+  return (l || []).filter(function (i) { return String(i.concepto || '').trim() || i.codigo || Number(i.valor); })
+    .map(function (i) { return { codigo: i.codigo || '', concepto: String(i.concepto || '').trim(), cantidad: Number(i.cantidad || 1), valor: Number(i.valor || 0) }; });
+}
+function limpiarComps(l) {
+  return (l || []).filter(function (c) { return c.estado || String(c.nota || '').trim(); })
+    .map(function (c) { return { nombre: c.nombre, estado: c.estado || '', nota: String(c.nota || '').trim() }; });
+}
+function compsCompletos(guardados) {   // todos los componentes de la plantilla, con lo que ya se haya marcado
+  guardados = guardados || [];
+  return COMPONENTES.map(function (c) {
+    var g = guardados.filter(function (x) { return x.nombre === c[0]; })[0];
+    return { nombre: c[0], ayuda: c[1], estado: g ? g.estado : '', nota: g ? g.nota : '' };
+  }).concat(guardados.filter(function (x) { return !COMPONENTES.some(function (c) { return c[0] === x.nombre; }); }));
+}
+
+/* ---------- avisos al técnico por WhatsApp (sin datos personales del cliente) ---------- */
+function msgTecOrden(o) {
+  var L = ['🔧 *Nueva orden de trabajo No. ' + o.numero + '* – SEA', '',
+    '🔹 Vehículo: ' + [o.tipo, o.modelo, o.color].filter(Boolean).join(' ')];
+  if (o.motor) L.push('🔹 Motor/chasis: ' + o.motor);
+  L.push('🔹 Motivo: ' + (o.motivo || ''));
+  if (o.estado) L.push('🔹 Estado físico al ingreso: ' + o.estado);
+  if (o.elementos) L.push('🔹 Deja: ' + o.elementos);
+  if (o.cotizacion) L.push('🔹 Cotización preliminar: ' + o.cotizacion);
+  (o.items || []).forEach(function (i) { L.push('   • ' + linItem(i, false)); });
+  L.push('', 'Revise el vehículo y haga el informe en la app › Mis órdenes:', appUrl(), '',
+    '⚠️ No haga repuestos ni arreglos que requieran autorización del cliente hasta que la orden salga 🟢 Aprobado.');
+  return L.join('\n');
+}
+function ordenParaTec(o) {   // fila de la hoja (MAYÚSCULAS) → datos para el aviso
+  var items = []; try { items = JSON.parse(o.ITEMS || '[]'); } catch (e) {}
+  return { numero: o.NUMERO, tipo: o.TIPO_VEHICULO, modelo: o.MODELO, color: o.COLOR, motor: o.MOTOR_CHASIS, motivo: o.MOTIVO,
+    estado: o.ESTADO_FISICO, elementos: o.ELEMENTOS, cotizacion: o.COTIZACION, items: items };
+}
+function avisarTecnico(nombre, texto) {
+  var cel = (S.celTec || {})[nombre];
+  if (!cel) { alert('No hay celular para ' + (nombre || 'el técnico') + '. Escríbalo en la hoja TECNICOS (columna B) del Google Sheet.'); return false; }
+  waA(cel, texto); return true;
+}
+function msgTecRespuesta(inf, ap, etapa) {
+  var it = (inf.datos && inf.datos.items) || [], si = it.filter(function (x, k) { return ap[k]; }), no = it.filter(function (x, k) { return !ap[k]; });
+  var L = ['🔧 *Orden No. ' + inf.NUMERO + '* – respuesta del cliente', '🔹 Vehículo: ' + [inf.orden.TIPO_VEHICULO, inf.orden.MODELO, inf.orden.COLOR].filter(Boolean).join(' ')];
+  if (si.length) { L.push('', '✅ AUTORIZADO, puede avanzar:'); si.forEach(function (i) { L.push('• ' + linItem(i, false)); }); }
+  if (no.length) { L.push('', '❌ NO autorizado, no lo haga:'); no.forEach(function (i) { L.push('• ' + linItem(i, false)); }); }
+  if (etapa === 'NO APROBADO') L.push('', 'El cliente no autorizó la reparación. No haga trabajos: deje el vehículo armado y listo para entrega.');
+  if (etapa === 'APROBADO' && !si.length && (inf.previos || []).length) L.push('', 'Siga solo con lo que el cliente ya había autorizado antes.');
+  L.push('', 'Detalle en la app › Mis órdenes: ' + appUrl());
+  return L.join('\n');
+}
+
+/* =================== TÉCNICO =================== */
+function cargarMis() {
+  $('listaMis').innerHTML = '<div class="card nota">Cargando…</div>';
+  api({ accion: 'misOrdenes' }).then(function (r) {
+    var c = $('listaMis'); c.innerHTML = '';
+    if (!r.ordenes.length) { c.innerHTML = '<div class="card nota">No tiene órdenes asignadas en este momento.</div>'; return; }
+    r.ordenes.forEach(function (o) {
+      var x = ETQ[o.ETAPA] || ['', '#eee', '#333', ''];
+      var d = document.createElement('div'); d.className = 'card';
+      d.innerHTML = '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><span style="font-weight:800;color:var(--rojo);font-size:20px">' + esc(o.NUMERO) + '</span>' + badgeEtapa(o.ETAPA) + '</div>' +
+        '<div style="margin-top:4px;font-weight:600">' + esc([o.TIPO_VEHICULO, o.MODELO, o.COLOR].filter(Boolean).join(' · ')) + '</div>' +
+        '<div class="nota">Cliente: ' + esc(o.CLIENTE) + ' · Ingresó ' + esc(o.FECHA) + (o.MOTOR_CHASIS ? ' · Motor/chasis ' + esc(o.MOTOR_CHASIS) : '') + '</div>' +
+        '<div style="font-size:14px;margin-top:6px"><b>Motivo:</b> ' + esc(o.MOTIVO) + '</div>' +
+        '<div class="estado-box" style="background:' + x[1] + ';color:' + x[2] + '">' + esc(x[3]) + '</div>' +
+        itemsTec(o) +
+        '<details><summary>Detalle del ingreso</summary><div style="font-size:14px;margin-top:6px">' +
+        '<div><b>Estado físico:</b> ' + esc(o.ESTADO_FISICO || '—') + '</div><div><b>Deja:</b> ' + esc(o.ELEMENTOS || '—') + '</div>' +
+        '<div><b>Cotización preliminar:</b> ' + esc(o.COTIZACION || '—') + '</div></div></details><div class="accTec"></div>';
+      var acc = d.querySelector('.accTec');
+      if (o.ETAPA === 'EN TALLER') boton(acc, '📝 Hacer informe', 'pri', function () { abrirFormInf(o, false); });
+      if (o.ETAPA === 'APROBADO') boton(acc, '➕ Hallazgo nuevo (requiere autorización)', 'sec', function () { abrirFormInf(o, true); });
+      if (o.ETAPA === 'APROBADO' || o.ETAPA === 'NO APROBADO')
+        boton(acc, o.ETAPA === 'APROBADO' ? '✅ Terminé lo autorizado' : '✅ Vehículo armado, listo para entrega', 'pri', function () {
+          if (!confirm('¿Marcar la orden ' + o.NUMERO + ' como terminada?')) return;
+          api({ accion: 'terminar', numero: o.NUMERO }).then(function () {
+            cargarMis();
+            avisoServicio('✓ Orden ' + o.NUMERO + ' marcada como terminada. Avísele a servicio técnico para que le avisen la entrega al cliente:',
+              '✅ *Orden ' + o.NUMERO + ' terminada*' + (o.ETAPA === 'NO APROBADO' ? ' (sin reparar: el cliente no autorizó; cobrar la revisión)' : '') + '\n🔹 ' + [o.TIPO_VEHICULO, o.MODELO, o.COLOR].filter(Boolean).join(' ') +
+              '\n👨‍🔧 ' + titulo(S.usuario) + '\n\nEl vehículo está listo para avisarle la entrega al cliente.');
+          }).catch(function (e) { alert(e.message); });
+        });
+      c.appendChild(d);
+    });
+  }).catch(function (e) { $('listaMis').innerHTML = '<div class="card err">' + esc(e.message) + '</div>'; });
+}
+function itemsTec(o) {
+  return (o.informes || []).map(function (inf) {
+    var it = (inf.datos && inf.datos.items) || [];
+    var cab = '<div style="margin-top:10px;font-size:14px"><b>Informe ' + inf.RONDA + (inf.datos && inf.datos.hallazgo ? ' (hallazgo nuevo)' : '') + '</b>';
+    if (!it.length) return cab + '<div class="nota">Sin ítems por autorizar.</div></div>';
+    return cab + it.map(function (i, k) {
+      var r = inf.respuesta ? inf.respuesta[k] : null;
+      return '<div class="' + (r === true ? 'it-ok' : (r === false ? 'it-no' : 'it-pen')) + '">' + (r === true ? '✅ ' : (r === false ? '❌ ' : '⏳ ')) + esc(linItem(i, false)) + '</div>';
+    }).join('') + '</div>';
+  }).join('');
+}
+function verTec(vista) { mostrar('vistaMis', vista === 'mis'); mostrar('vistaFormInf', vista === 'form'); window.scrollTo(0, 0); }
+function abrirFormInf(o, hallazgo) {
+  S.inf = { orden: o, hallazgo: hallazgo, tipo: hallazgo ? 'servicio' : 'mantenimiento', comps: compsCompletos([]), items: [], fotos: [], proc: null };
+  $('infTitulo').textContent = (hallazgo ? 'Hallazgo nuevo · Orden ' : 'Informe · Orden ') + o.NUMERO;
+  $('infSub').textContent = [o.TIPO_VEHICULO, o.MODELO, o.COLOR].filter(Boolean).join(' ') + ' · Motivo: ' + o.MOTIVO;
+  mostrar('boxTipoInf', !hallazgo);
+  $('segTipoInf').querySelectorAll('button').forEach(function (b) { b.classList.toggle('on', b.dataset.v === S.inf.tipo); });
+  $('infDesc').value = ''; $('infObs').value = ''; $('errInf').textContent = '';
+  pintarComponentes($('infComps'), S.inf.comps);
+  pintarItems($('infItems'), S.inf.items, totalInf); totalInf();
+  pintarFotosInf(); aplicarTipoInf(); verTec('form');
+}
+function aplicarTipoInf() {
+  var mant = S.inf.tipo === 'mantenimiento';
+  mostrar('cardMant', mant);
+  $('lblInfDesc').textContent = S.inf.hallazgo ? 'Hallazgo nuevo: qué encontró y qué hay que hacer *' : (mant ? 'Trabajos realizados / comentarios (opcional)' : 'Descripción del proceso y hallazgos *');
+}
+$('segTipoInf').querySelectorAll('button').forEach(function (b) {
+  b.onclick = function () { $('segTipoInf').querySelectorAll('button').forEach(function (x) { x.classList.remove('on'); }); b.classList.add('on'); S.inf.tipo = b.dataset.v; aplicarTipoInf(); };
+});
+function totalInf() { $('infTotal').textContent = fmt(sumaItems(S.inf.items)); }
+$('btnInfItem').onclick = function () { S.inf.items.push({ concepto: '', cantidad: 1, valor: '' }); pintarItems($('infItems'), S.inf.items, totalInf); var l = $('infItems').querySelectorAll('.i_con'); if (l.length) l[l.length - 1].focus(); };
+$('btnInfCam').onclick = function () { $('inInfCam').click(); };
+$('btnInfGal').onclick = function () { $('inInfGal').click(); };
+$('inInfCam').onchange = $('inInfGal').onchange = function () {
+  Array.prototype.forEach.call(this.files, function (f) { S.inf.fotos.push({ url: URL.createObjectURL(f), listo: comprimir(f) }); });
+  this.value = ''; pintarFotosInf();
+};
+function pintarFotosInf() {
+  var c = $('infFotos'); c.innerHTML = '';
+  S.inf.fotos.forEach(function (a, i) {
+    var d = document.createElement('div'); d.className = 'foto';
+    d.innerHTML = '<img src="' + a.url + '"><button type="button">×</button>';
+    d.querySelector('button').onclick = function () { S.inf.fotos.splice(i, 1); pintarFotosInf(); };
+    c.appendChild(d);
+  });
+}
+$('btnVolverInf').onclick = function () { if (confirm('¿Salir sin enviar el informe? Se pierde lo escrito.')) verTec('mis'); };
+$('btnEnviarInf').onclick = function () {
+  var I = S.inf, items = limpiarItems(I.items), comps = I.tipo === 'mantenimiento' ? limpiarComps(I.comps) : [];
+  var desc = $('infDesc').value.trim(), e = [];
+  if (items.some(function (i) { return !i.codigo; })) e.push('el código de cada ítem, escrito antes del concepto (ej. R-0062 Pastillas)');
+  if (items.some(function (i) { return !i.concepto; })) e.push('el nombre de cada ítem');
+  if (items.some(function (i) { return !i.valor; })) e.push('el valor de cada ítem');
+  if (I.tipo === 'mantenimiento' && !comps.length && !desc) e.push('al menos un componente revisado');
+  if (I.tipo !== 'mantenimiento' && !desc) e.push(I.hallazgo ? 'qué encontró' : 'la descripción del proceso y hallazgos');
+  if (e.length) { $('errInf').textContent = 'Falta: ' + e.join(', ') + '.'; return; }
+  $('errInf').textContent = '';
+  if (!items.length && !confirm('El informe no tiene repuestos ni arreglos por autorizar. ¿Enviarlo así?')) return;
+  I.datos = { tipo: I.tipo, componentes: comps, descripcion: desc, observaciones: $('infObs').value.trim(), items: items, hallazgo: !!I.hallazgo };
+  enviarInfTec();
+};
+function enviarInfTec() {
+  var I = S.inf;
+  I.proc = I.proc || { id: null, subidos: {} };
+  var P = I.proc;
+  $('btnReintentar').onclick = enviarInfTec;
+  mostrar('mProceso', true); mostrar('btnReintentar', false); $('procErr').textContent = ''; $('procTitulo').textContent = 'Orden ' + I.orden.NUMERO;
+  var cadena = Promise.resolve();
+  if (!P.id) cadena = cadena.then(function () {
+    progreso(15, 'Enviando informe…');
+    return api({ accion: 'guardarInforme', numero: I.orden.NUMERO, tipo: I.tipo, datos: I.datos }).then(function (r) { P.id = r.id; });
+  });
+  cadena = cadena.then(function () {
+    return Promise.all(I.fotos.map(function (a) { return a.listo; })).then(function (files) {
+      var seq = Promise.resolve();
+      files.forEach(function (f, i) {
+        seq = seq.then(function () {
+          if (P.subidos[i]) return;
+          progreso(30 + Math.round(65 * i / Math.max(1, files.length)), 'Subiendo foto ' + (i + 1) + ' de ' + files.length + '…');
+          return b64(f).then(function (x) { return api({ accion: 'subir', numero: I.orden.NUMERO, informe: P.id, nombre: P.id + '_' + String(i + 1).padStart(2, '0') + '.jpg', mime: 'image/jpeg', b64: x }); })
+            .then(function () { P.subidos[i] = true; });
+        });
+      });
+      return seq;
+    });
+  });
+  cadena.then(function () {
+    progreso(100, 'Informe enviado a revisión');
+    var o = I.orden, n = I.datos.items.length;
+    setTimeout(function () {
+      mostrar('mProceso', false); verTec('mis'); cargarMis();
+      avisoServicio('✓ Informe de la orden ' + o.NUMERO + ' guardado. Ahora avísele a servicio técnico para que lo revisen:',
+        (I.hallazgo ? '➕ *Hallazgo nuevo para revisar*' : '📝 *Informe listo para revisar*') + ' – Orden ' + o.NUMERO + '\n🔹 ' + [o.TIPO_VEHICULO, o.MODELO, o.COLOR].filter(Boolean).join(' ') +
+        '\n🔹 ' + (I.tipo === 'mantenimiento' ? 'Mantenimiento' : 'Servicio') + ' · ' + (n ? n + (n === 1 ? ' ítem por autorizar' : ' ítems por autorizar') : 'sin ítems por autorizar') + (I.fotos.length ? ' · ' + I.fotos.length + ' foto(s)' : '') +
+        '\n👨‍🔧 ' + titulo(S.usuario) + '\n\nRevisar en la app › Informes.');
+    }, 400);
+  }).catch(function (e) {
+    $('procErr').textContent = (P.id ? 'El informe quedó guardado, pero falló al subir fotos: ' : 'No se pudo enviar: ') + e.message + '. Revise la conexión y reintente.';
+    mostrar('btnReintentar', true);
+  });
+}
+$('btnRecargarMis').onclick = cargarMis;
+/* el técnico le avisa al WhatsApp de servicio técnico (lo ve Alexander en ese celular) */
+function avisoServicio(txt, msg) { S.msgServ = msg; $('tsTxt').textContent = txt; $('ts1').classList.remove('ok'); mostrar('mTecServ', true); }
+$('btnTecServ').onclick = function () { $('ts1').classList.add('ok'); waA(S.waServicio || '3003479102', S.msgServ); };
+$('btnTecServListo').onclick = function () { mostrar('mTecServ', false); };
+
+/* =================== COORDINADOR: INFORMES =================== */
+function pintarAvisoInf(lista) {
+  var rev = lista.filter(function (x) { return x.ESTADO === 'POR REVISAR'; }), esp = lista.filter(function (x) { return x.ESTADO === 'ENVIADO'; });
+  $('cntInf').textContent = rev.length; mostrar('cntInf', rev.length > 0);
+  var partes = [];
+  if (rev.length) partes.push(rev.length + (rev.length === 1 ? ' informe por revisar' : ' informes por revisar'));
+  if (esp.length) partes.push(esp.length + ' esperando respuesta del cliente');
+  $('avisoInfTxt').textContent = partes.join(' · ');
+  var viejo = esp.map(function (x) { return diasDesde(x.FECHA_ENVIO); }).sort(function (a, b) { return b - a; })[0];
+  $('avisoInfDet').textContent = esp.length && viejo > 0 ? 'El más antiguo se envió ' + txtDias(viejo) + ': vuelva a escribirle al cliente.' : '';
+  mostrar('avisoInf', partes.length > 0);
+}
+function revisarInformes() { api({ accion: 'informes' }).then(function (r) { S.infs = r.informes; if (r.valorRevision) S.valorRev = r.valorRevision; pintarAvisoInf(r.informes); }).catch(function () {}); }
+function cargarInformes() {
+  $('listaRev').innerHTML = $('listaEsp').innerHTML = '<div class="nota">Cargando…</div>';
+  api({ accion: 'informes' }).then(function (r) {
+    S.infs = r.informes; if (r.valorRevision) S.valorRev = r.valorRevision; pintarAvisoInf(r.informes);
+    var rev = r.informes.filter(function (x) { return x.ESTADO === 'POR REVISAR'; }), esp = r.informes.filter(function (x) { return x.ESTADO === 'ENVIADO'; });
+    $('listaRev').innerHTML = rev.length ? '' : '<div class="nota">No hay informes por revisar. ✓</div>';
+    $('listaEsp').innerHTML = esp.length ? '' : '<div class="nota">Ningún informe espera respuesta.</div>';
+    rev.forEach(function (x) {
+      var d = filaInforme(x, '<span class="badge" style="background:#eeedfe;color:#3c3489">Informe ' + x.RONDA + (x.datos.hallazgo ? ' · hallazgo' : '') + '</span>', 'Llegó ' + x.FECHA_TECNICO);
+      boton(d.querySelector('.acc'), '✏️ Revisar y enviar', 'pri', function () { abrirRevision(x); });
+      $('listaRev').appendChild(d);
+    });
+    esp.forEach(function (x) {
+      var n = diasDesde(x.FECHA_ENVIO);
+      var d = filaInforme(x, '<span class="badge" style="background:' + (n >= 2 ? '#fde7e7;color:#a32d2d' : '#fff3cd;color:#7a5b00') + '">🟡 enviado ' + txtDias(n) + '</span>', 'Envió ' + (x.REVISO || '') + ' · ' + x.FECHA_ENVIO);
+      var acc = d.querySelector('.acc');
+      boton(acc, '✅ Registrar respuesta', 'pri', function () { abrirRespuesta(x); });
+      boton(acc, '💬 Reenviar', 'sec', function () { if (/PAPEL/.test(x.orden.CANAL || '')) alert('Cliente sin WhatsApp: llámelo.'); else waA(x.orden.TELEFONO, x.TEXTO_FINAL || mensajeInforme(x, x.datos)); });
+      boton(acc, '✏️ Corregir', 'sec', function () { abrirRevision(x); });
+      $('listaEsp').appendChild(d);
+    });
+  }).catch(function (e) { $('listaRev').innerHTML = '<div class="err">' + esc(e.message) + '</div>'; $('listaEsp').innerHTML = ''; });
+}
+function filaInforme(x, badge, linea) {
+  var d = document.createElement('div'); d.className = 'orden';
+  d.innerHTML = '<div class="num">' + esc(x.NUMERO) + '</div><div class="info"><div>' + esc(x.orden.NOMBRE) + badge + '</div><div>' +
+    esc([x.orden.TIPO_VEHICULO, x.orden.MODELO].filter(Boolean).join(' ')) + ' · 👨‍🔧 ' + esc(titulo(x.TECNICO)) + ' · ' + esc(linea) + '</div></div><div class="acc" style="flex-direction:column;align-items:stretch"></div>';
+  return d;
+}
+$('btnRecargarInf').onclick = cargarInformes;
+$('btnVerInf').onclick = function () { verTab('Informes'); };
+
+/* ---- mensaje del informe para el cliente (formato de las plantillas de SEA) ---- */
+function mensajeInforme(inf, dt) {
+  var o = inf.orden || {}, mant = dt.tipo === 'mantenimiento', L = [];
+  L.push('🔧 *' + (dt.hallazgo ? 'Informe de servicio – hallazgo adicional' : (mant ? 'Informe de mantenimiento' : 'Informe de servicio')) + '* – SEA', '');
+  L.push('🔹 Orden No. ' + inf.NUMERO);
+  L.push('🔹 Cliente: ' + (o.NOMBRE || ''));
+  L.push('🔹 Vehículo: ' + [o.TIPO_VEHICULO, o.MODELO, o.COLOR].filter(Boolean).join(' '));
+  L.push('🔹 Técnico: ' + titulo(inf.TECNICO));
+  L.push('🔹 Fecha: ' + new Date().toLocaleDateString('es-CO', { day: 'numeric', month: 'long', year: 'numeric' }));
+  if (!mant && o.MOTIVO) L.push('🔹 Motivo de ingreso: ' + o.MOTIVO);
+  var cs = (dt.componentes || []).filter(function (c) { return c.estado || c.nota; });
+  if (mant && cs.length) {
+    L.push('', '*Revisión*');
+    cs.forEach(function (c) { var e = EST[c.estado]; L.push((e ? e[0] : '•') + ' ' + c.nombre + ': ' + (e ? e[1] : '') + (c.nota ? (e ? ' – ' : '') + c.nota : '')); });
+  }
+  if (dt.descripcion) L.push('', '*' + (dt.hallazgo ? 'Hallazgo' : (mant ? 'Trabajos realizados' : 'Descripción del proceso y hallazgos')) + '*', dt.descripcion);
+  if (dt.observaciones) L.push('', '*Observaciones*', dt.observaciones);
+  var prev = inf.previos || [], items = dt.items || [];
+  if (prev.length || items.length) {
+    L.push('', '💰 *Cotización*');
+    if (prev.length) { L.push('_En proceso (autorizado):_'); prev.forEach(function (i) { L.push('• ' + linItem(i, true)); }); }
+    if (items.length) { L.push('_Por confirmar:_'); items.forEach(function (i) { L.push('• ' + linItem(i, true)); }); }
+    var tot = sumaItems(prev) + sumaItems(items), ab = Number(numDe(o.ABONO) || 0);
+    L.push('', 'Total: ' + fmt(tot));
+    if (ab) L.push('Abono: ' + fmt(ab));
+    L.push('Saldo: ' + fmt(tot - ab));
+    L.push('Los pagos con tarjeta tienen un recargo del 4%.');
+    if (items.length) L.push('', '✅ Por favor indíquenos qué ítems *autoriza* para continuar. Sin su autorización no realizamos esos trabajos.');
+  }
+  L.push('', '📍 Av. Suba cra 50 # 91 - 82 - Bogotá · 📞 300 347 9102');
+  return L.join('\n');
+}
+
+/* ---- revisar y corregir el informe ---- */
+function abrirRevision(inf) {
+  var dt = JSON.parse(JSON.stringify(inf.datos || {}));
+  dt.tipo = dt.tipo || inf.TIPO || 'servicio';
+  dt.componentes = compsCompletos(dt.componentes);
+  dt.items = (dt.items || []).map(function (i) { return Object.assign({}, i); });
+  S.rev = { inf: inf, datos: dt, editado: false };
+  ['vistaNuevo', 'vistaLista', 'vistaInformes', 'vistaTablero'].forEach(function (v) { mostrar(v, false); });
+  mostrar('vistaRevisar', true); window.scrollTo(0, 0);
+  $('revTitulo').textContent = 'Orden ' + inf.NUMERO + ' · Informe ' + inf.RONDA;
+  $('revSub').textContent = inf.orden.NOMBRE + ' · ' + [inf.orden.TIPO_VEHICULO, inf.orden.MODELO, inf.orden.COLOR].filter(Boolean).join(' ') + ' · Técnico: ' + titulo(inf.TECNICO) + (inf.orden.MOTIVO ? ' · Motivo: ' + inf.orden.MOTIVO : '');
+  $('segRevTipo').querySelectorAll('button').forEach(function (b) { b.classList.toggle('on', b.dataset.v === dt.tipo); });
+  $('revDesc').value = dt.descripcion || ''; $('revObs').value = dt.observaciones || ''; $('errRev').textContent = '';
+  pintarComponentes($('revComps'), dt.componentes, revCambio);
+  pintarItems($('revItems'), dt.items, revCambio);
+  var prev = inf.previos || [];
+  $('revPrevios').innerHTML = prev.length ? '<b>En proceso (ya autorizado):</b><br>' + prev.map(function (i) { return '✅ ' + esc(linItem(i, true)); }).join('<br>') : '';
+  $('revFotos').textContent = inf.numFotos ? inf.numFotos + ' foto(s). Se comparten con el cliente al enviar.' : 'El técnico no adjuntó fotos.';
+  $('revAbono').textContent = fmt(numDe(inf.orden.ABONO) || 0);
+  mostrar('cardRevMant', dt.tipo === 'mantenimiento');
+  if (inf.ESTADO === 'ENVIADO' && inf.TEXTO_FINAL) { $('revTexto').value = inf.TEXTO_FINAL; S.rev.editado = true; revTotales(); }
+  else revCambio();
+  $('btnRevEnviar').textContent = inf.ESTADO === 'ENVIADO' ? 'Guardar corrección y reenviar' : 'Guardar y enviar al cliente';
+}
+function datosRev() {
+  var dt = S.rev.datos;
+  return { tipo: dt.tipo, componentes: dt.tipo === 'mantenimiento' ? limpiarComps(dt.componentes) : [], descripcion: $('revDesc').value.trim(),
+    observaciones: $('revObs').value.trim(), items: limpiarItems(dt.items), hallazgo: !!dt.hallazgo };
+}
+function revTotales() {
+  var sin = limpiarItems(S.rev.datos.items).filter(function (i) { return !i.codigo; }).length;
+  $('revSinCod').textContent = sin ? '⚠️ ' + sin + (sin === 1 ? ' ítem sin código' : ' ítems sin código') + ': escriba el código antes del concepto (ej. R-0062 Pastillas) para que pase completo a la orden de salida.' : '';
+  var tot = sumaItems(S.rev.inf.previos) + sumaItems(S.rev.datos.items), ab = Number(numDe(S.rev.inf.orden.ABONO) || 0);
+  $('revTotal').textContent = fmt(tot); $('revSaldo').textContent = fmt(tot - ab);
+}
+function revCambio() { revTotales(); if (!S.rev.editado) $('revTexto').value = mensajeInforme(S.rev.inf, datosRev()); }
+$('revDesc').oninput = $('revObs').oninput = revCambio;
+$('revTexto').oninput = function () { S.rev.editado = true; };
+$('btnRevRegenerar').onclick = function () { if (S.rev.editado && !confirm('Se pierden las correcciones hechas a mano en el mensaje. ¿Volver a armarlo?')) return; S.rev.editado = false; revCambio(); };
+$('segRevTipo').querySelectorAll('button').forEach(function (b) {
+  b.onclick = function () { $('segRevTipo').querySelectorAll('button').forEach(function (x) { x.classList.remove('on'); }); b.classList.add('on'); S.rev.datos.tipo = b.dataset.v; mostrar('cardRevMant', b.dataset.v === 'mantenimiento'); revCambio(); };
+});
+$('btnRevItem').onclick = function () { S.rev.datos.items.push({ concepto: '', cantidad: 1, valor: '' }); pintarItems($('revItems'), S.rev.datos.items, revCambio); };
+$('btnRevVolver').onclick = function () { verTab('Informes'); };
+$('btnRevEnviar').onclick = function () {
+  var d = datosRev(), txt = $('revTexto').value.trim(), inf = S.rev.inf, btn = this;
+  if (d.items.some(function (i) { return !i.concepto || !i.valor; })) { $('errRev').textContent = 'Cada ítem necesita nombre y valor.'; return; }
+  if (!txt) { $('errRev').textContent = 'El mensaje está vacío.'; return; }
+  if (S.rev.editado && txt.indexOf(fmt(sumaItems(inf.previos) + sumaItems(d.items))) < 0 && d.items.length &&
+    !confirm('Usted corrigió el mensaje a mano y el total que dice puede no coincidir con los ítems (' + fmt(sumaItems(inf.previos) + sumaItems(d.items)) + '). ¿Enviar de todas formas?')) return;
+  $('errRev').textContent = ''; btn.disabled = true;
+  api({ accion: 'enviarInforme', id: inf.ID, datos: d, texto: txt }).then(function (r) {
+    btn.disabled = false;
+    abrirEnviarInf(inf, txt, d, r.etapa);
+  }).catch(function (e) { btn.disabled = false; $('errRev').textContent = e.message; });
+};
+
+/* ---- pasos para enviar al cliente ---- */
+function abrirEnviarInf(inf, txt, d, etapa) {
+  var papel = /PAPEL/.test(inf.orden.CANAL || '');
+  S.ei = { inf: inf, txt: txt, datos: d, files: null };
+  $('eiNum').textContent = inf.NUMERO;
+  ['e1', 'e2', 'e3', 'e4'].forEach(function (x) { $(x).classList.remove('ok'); });
+  mostrar('eiPasoWa', !papel); mostrar('eiPapel', papel);
+  mostrar('eiPasoResp', etapa !== 'APROBADO'); mostrar('eiPasoSigue', etapa === 'APROBADO');
+  mostrar('eiPasoFotos', inf.numFotos > 0);
+  if (inf.numFotos > 0) {
+    $('btnEiFotos').disabled = true; $('eiFotosTxt').textContent = 'Preparando ' + inf.numFotos + ' foto(s)…';
+    api({ accion: 'fotosInforme', id: inf.ID }).then(function (r) {
+      S.ei.files = r.fotos.map(b64aFile);
+      $('btnEiFotos').disabled = false; $('eiFotosTxt').textContent = S.ei.files.length + ' foto(s) listas. En WhatsApp elija el chat del cliente.';
+    }).catch(function (e) { $('eiFotosTxt').textContent = 'No se pudieron traer las fotos: ' + e.message + '. Ábralas desde la carpeta de la orden (Órdenes › Fotos).'; });
+  }
+  mostrar('mEnviarInf', true);
+}
+$('btnEiWa').onclick = function () { $('e1').classList.add('ok'); waA(S.ei.inf.orden.TELEFONO, S.ei.txt); };
+$('btnEiFotos').onclick = function () { if (S.ei.files && S.ei.files.length) compartir(S.ei.files, '', 'e2'); };
+$('btnEiTec').onclick = function () {
+  var inf = S.ei.inf;
+  if (avisarTecnico(inf.TECNICO, '🔧 *Orden No. ' + inf.NUMERO + '* – el informe ya se le envió al cliente y no había nada por autorizar. Puede continuar.\n\nDetalle en la app › Mis órdenes: ' + appUrl())) $('e4').classList.add('ok');
+};
+$('btnEiListo').onclick = function () { mostrar('mEnviarInf', false); verTab('Informes'); };
+
+/* ---- registrar la respuesta del cliente (ítem por ítem) ---- */
+function abrirRespuesta(inf) {
+  var it = (inf.datos && inf.datos.items) || [];
+  S.rp = { inf: inf, ap: it.map(function () { return null; }), captura: null };
+  $('rpTitulo').textContent = 'Respuesta del cliente · Orden ' + inf.NUMERO;
+  $('rpSub').textContent = inf.orden.NOMBRE + ' · informe enviado ' + txtDias(diasDesde(inf.FECHA_ENVIO)) + '. Marque lo que el cliente autorizó:';
+  var c = $('rpItems'); c.innerHTML = '';
+  it.forEach(function (i, k) {
+    var d = document.createElement('div'); d.className = 'resp-it';
+    d.innerHTML = '<div>' + esc(linItem(i, false)) + '<div class="nota" style="margin:0">' + fmt(Number(i.cantidad || 1) * Number(i.valor || 0)) + '</div></div><div class="seg"><button type="button" data-v="si">✅ Sí</button><button type="button" data-v="no">❌ No</button></div>';
+    d.querySelectorAll('.seg button').forEach(function (b) { b.onclick = function () { S.rp.ap[k] = b.dataset.v === 'si'; pintarResp(); }; });
+    c.appendChild(d);
+  });
+  $('errRp').textContent = ''; $('rpCapTxt').textContent = 'La captura queda guardada en la carpeta privada de la orden como prueba de lo que autorizó.';
+  $('btnRpCaptura').textContent = '📸 Adjuntar captura de la respuesta';
+  mostrar('rpForm', true); mostrar('rpFin', false); pintarResp(); mostrar('mResp', true);
+}
+function pintarResp() {
+  var it = S.rp.inf.datos.items || [];
+  if (!S.rp.ap.some(function (x) { return x === null; })) $('errRp').textContent = '';
+  $('rpItems').querySelectorAll('.resp-it').forEach(function (d, k) {
+    d.querySelectorAll('.seg button').forEach(function (b) { b.classList.toggle('on', S.rp.ap[k] === (b.dataset.v === 'si')); });
+  });
+  $('rpTotal').textContent = fmt(sumaItems(it.filter(function (x, k) { return S.rp.ap[k] === true; })));
+  var nada = S.rp.ap.length && S.rp.ap.every(function (x) { return x === false; }), prev = (S.rp.inf.previos || []).length;
+  $('rpRevision').innerHTML = nada ? (prev ? 'No autorizó lo nuevo: el técnico sigue solo con lo que ya estaba autorizado.' : '<b style="color:var(--rojo)">No autorizó nada:</b> se cobra la revisión de ' + fmt(S.valorRev || 60000) + ' (queda anotado en la orden) y el técnico deja el vehículo armado para entrega.') : '';
+}
+$('btnRpTodo').onclick = function () { S.rp.ap = S.rp.ap.map(function () { return true; }); pintarResp(); };
+$('btnRpNada').onclick = function () { S.rp.ap = S.rp.ap.map(function () { return false; }); pintarResp(); };
+$('btnRpCaptura').onclick = function () { $('inResp').click(); };
+$('inResp').onchange = function () {
+  var f = this.files[0]; this.value = '';
+  if (!f) return;
+  S.rp.captura = comprimir(f);
+  $('btnRpCaptura').textContent = '✓ Captura lista (toque para cambiarla)'; $('rpCapTxt').textContent = 'Se sube al guardar la respuesta.';
+};
+$('btnRpCancelar').onclick = function () { mostrar('mResp', false); };
+$('btnRpGuardar').onclick = function () {
+  var R = S.rp;
+  if (R.ap.some(function (x) { return x === null; })) { $('errRp').textContent = 'Marque ✅ o ❌ en cada ítem.'; return; }
+  if (!R.captura && !confirm('No adjuntó la captura de la respuesta del cliente. ¿Guardar sin captura? (queda registrado quién la marcó)')) return;
+  $('errRp').textContent = ''; var btn = this; btn.disabled = true;
+  var paso = R.guardado ? Promise.resolve(R.guardado) : api({ accion: 'respuesta', id: R.inf.ID, aprobados: R.ap }).then(function (r) { R.guardado = r; return r; });
+  paso.then(function (r) {
+    if (!R.captura) return r;
+    return R.captura.then(b64).then(function (x) { return api({ accion: 'subir', numero: R.inf.NUMERO, informe: R.inf.ID, esRespuesta: true, nombre: R.inf.ID + '_RESPUESTA_CLIENTE.jpg', mime: 'image/jpeg', b64: x }); })
+      .then(function () { return r; });
+  }).then(function (r) {
+    btn.disabled = false;
+    var x = ETQ[r.etapa];
+    $('rpFinTxt').style.background = x[1]; $('rpFinTxt').style.color = x[2];
+    $('rpFinTxt').innerHTML = '<b>Orden ' + R.inf.NUMERO + ': ' + x[0] + '</b><br>' + (r.etapa === 'NO APROBADO' ? 'Se anotó el cobro de la revisión (' + fmt(r.valorRevision || S.valorRev) + ').' : 'Total autorizado de la orden: ' + fmt(sumaItems(r.aprobados))) + '<br>Ahora avísele al técnico.';
+    R.msgTec = msgTecRespuesta(R.inf, R.ap, r.etapa);
+    mostrar('rpForm', false); mostrar('rpFin', true);
+  }).catch(function (e) {
+    btn.disabled = false;
+    $('errRp').textContent = (R.guardado ? 'La respuesta quedó guardada, pero no se pudo subir la captura: ' : 'No se pudo guardar: ') + e.message + '. Toque “Guardar respuesta” de nuevo.';
+  });
+};
+$('btnRpTec').onclick = function () { avisarTecnico(S.rp.inf.TECNICO, S.rp.msgTec); };
+$('btnRpListo').onclick = function () { mostrar('mResp', false); cargarInformes(); };
+
+/* ---- aviso al técnico al crear la orden ---- */
+$('btnAvisoTec').onclick = function () {
+  var P = S.ultima, d = P.datos;
+  if (avisarTecnico(d.tecnico, msgTecOrden({ numero: P.numero, tipo: d.tipo, modelo: d.modelo, color: d.color, motor: d.motorChasis, motivo: d.motivo, estado: d.estado, elementos: d.elementos, cotizacion: d.cotizacion, items: d.items }))) $('pt').classList.add('ok');
+};
+
+/* =================================================================
+   ENTREGA: aviso al cliente (empiezan los 2 días) · parqueadero · entregado
+   ================================================================= */
+ETQ['LISTO PARA ENTREGA'] = ['📦 Avisado, por recoger', '#e7f1fb', '#0c447c', 'Ya se le avisó al cliente que puede recoger el vehículo.'];
+ETQ['ENTREGADO'] = ['🏁 Entregado', '#f1efe8', '#444441', 'El vehículo ya se entregó.'];
+var TARIFAS = { moto: 10000, bici: 6000, repuesto: 3000 };   // texto de la orden de ingreso
+function tarifaParq(tipo) { tipo = String(tipo || '').toLowerCase(); return /moto/.test(tipo) ? TARIFAS.moto : (/repuesto|bater/.test(tipo) ? TARIFAS.repuesto : TARIFAS.bici); }
+function diasParq(fAviso) { return fAviso ? Math.max(0, diasDesde(fAviso) - 2) : 0; }
+function puedeAvisar(o) { return o.ESTADO !== 'ANULADA' && ['APROBADO', 'NO APROBADO', 'TERMINADO', 'EN TALLER'].indexOf(o.ETAPA) >= 0; }
+/* lo que se le cobra al cliente: lo autorizado; si no autorizó nada, la revisión; si la orden no pasó por informes, la cotización del ingreso */
+function cobroOrden(o) {
+  var items = [], origen;
+  if (o.ETAPA === 'NO APROBADO' || numDe(o.COBRO_REVISION)) { items = [{ concepto: 'Revisión técnica', cantidad: 1, valor: Number(numDe(o.COBRO_REVISION) || S.valorRev || 60000) }]; origen = 'revision'; }
+  else {
+    try { items = JSON.parse(o.ITEMS_APROBADOS || '[]'); } catch (e) {}
+    origen = 'aprobado';
+    if (!items.length) { try { items = JSON.parse(o.ITEMS || '[]'); } catch (e) {} origen = 'ingreso'; }
+  }
+  var total = sumaItems(items) || Number(numDe(o.TOTAL) || 0), abono = Number(numDe(o.ABONO) || 0);
+  return { items: items, total: total, abono: abono, saldo: total - abono, origen: origen };
+}
+function mensajeEntrega(o) {
+  var c = cobroOrden(o), t = tarifaParq(o.TIPO_VEHICULO), L = [];
+  L.push('🚲✅ *Su vehículo está listo para entrega* – SEA', '');
+  L.push('📢 Estimado(a) ' + o.NOMBRE);
+  L.push('🔹 Orden No. ' + o.NUMERO);
+  L.push('🔹 Vehículo: ' + [o.TIPO_VEHICULO, o.MODELO, o.COLOR].filter(Boolean).join(' '));
+  if (c.items.length || c.total) {
+    L.push('', '💰 *Valor del servicio*');
+    c.items.forEach(function (i) { L.push('• ' + linItem(i, true)); });
+    L.push('', 'Total: ' + fmt(c.total));
+    if (c.abono) L.push('Abono: ' + fmt(c.abono));
+    L.push('Saldo a pagar: ' + fmt(c.saldo));
+    L.push('Los pagos con tarjeta tienen un recargo del 4%.');
+  }
+  L.push('', '🕘 *Horario para recogerlo*', 'Lunes a viernes: 9:00 a. m. – 1:00 p. m. y 2:00 p. m. – 6:00 p. m.', 'Sábados: 9:00 a. m. – 2:00 p. m.');
+  L.push('', '⚠️ Tiene máximo 2 días calendario a partir de este aviso para recogerlo. Después se cobra parqueadero por día: ' + fmt(t) + '.');
+  L.push('', '📍 Av. Suba cra 50 # 91 - 82 - Bogotá · 📞 300 347 9102');
+  return L.join('\n');
+}
+function abrirEntrega(o) {
+  S.ent = o;
+  var c = cobroOrden(o), papel = esPapel(o), reenvio = o.ETAPA === 'LISTO PARA ENTREGA';
+  $('enTitulo').textContent = (reenvio ? 'Reenviar aviso de entrega · Orden ' : 'Aviso de entrega · Orden ') + o.NUMERO;
+  $('enSub').innerHTML = esc(o.NOMBRE) + ' · ' + esc([o.TIPO_VEHICULO, o.MODELO].filter(Boolean).join(' ')) + ' · 👨‍🔧 ' + esc(titulo(o.TECNICO || 'sin técnico')) +
+    (o.ETAPA !== 'TERMINADO' && !reenvio ? '<br><b style="color:#7a5b00">⚠️ El técnico no ha marcado la orden como terminada (' + esc((ETQ[o.ETAPA] || [o.ETAPA])[0]) + ').</b>' : '') +
+    (reenvio ? '<br>Avisado el ' + esc(o.FECHA_AVISO_ENTREGA) + ': reenviarlo NO reinicia los 2 días.' : '') +
+    (c.origen === 'ingreso' && c.items.length ? '<br>Valores de la cotización del ingreso (la orden no tiene ítems autorizados en informes): revíselos.' : '');
+  $('enTexto').value = mensajeEntrega(o);
+  mostrar('btnEnWa', !papel); mostrar('enPapel', papel);
+  $('btnEnRegistrar').textContent = reenvio ? 'Listo' : (papel ? 'Ya lo llamé: registrar el aviso' : 'Registrar el aviso sin abrir WhatsApp');
+  $('errEn').textContent = '';
+  mostrar('mEntrega', true);
+}
+function registrarAviso(cerrar) {
+  var o = S.ent;
+  if (o.ETAPA === 'LISTO PARA ENTREGA') { if (cerrar) mostrar('mEntrega', false); return Promise.resolve(); }
+  return api({ accion: 'avisoEntrega', numero: o.NUMERO }).then(function () { o.ETAPA = 'LISTO PARA ENTREGA'; if (cerrar) mostrar('mEntrega', false); cargarLista(); })
+    .catch(function (e) { $('errEn').textContent = 'No se pudo registrar el aviso: ' + e.message; mostrar('mEntrega', true); });
+}
+$('btnEnWa').onclick = function () { waA(S.ent.TELEFONO, $('enTexto').value); registrarAviso(true); };   // WhatsApp primero (el celular no deja abrirlo después de esperar al servidor)
+$('btnEnRegistrar').onclick = function () { registrarAviso(true); };
+$('btnEnCancelar').onclick = function () { mostrar('mEntrega', false); };
+function marcarEntregado(o) {
+  var d = diasParq(o.FECHA_AVISO_ENTREGA), t = tarifaParq(o.TIPO_VEHICULO), c = cobroOrden(o);
+  var txt = '¿El cliente recogió el vehículo de la orden ' + o.NUMERO + '?\n\n' +
+    (o.FECHA_AVISO_ENTREGA ? 'Avisado el ' + o.FECHA_AVISO_ENTREGA.slice(0, 10) + '. ' : 'No se registró aviso de entrega. ') +
+    (d ? 'PARQUEADERO: ' + d + ' día(s) × ' + fmt(t) + ' = ' + fmt(d * t) + ' (súmelo en la orden de salida).' : 'Sin parqueadero.') +
+    '\nSaldo del servicio: ' + fmt(c.saldo) + '.\n\nMárquelo cuando el cliente firme la orden de salida.';
+  if (!confirm(txt)) return;
+  api({ accion: 'entregar', numero: o.NUMERO }).then(cargarLista).catch(function (e) { alert(e.message); });
+}
+
+/* =================== TABLERO =================== */
+function cargarTablero() {
+  $('tableroCont').innerHTML = '<div class="nota">Cargando…</div>';
+  api({ accion: 'listar', cantidad: 400 }).then(function (r) {
+    var act = r.ordenes.filter(function (o) { return o.ESTADO !== 'ANULADA' && o.ETAPA !== 'ENTREGADO'; });
+    var orden = ['TURNO', 'EN TALLER', 'INFORME POR REVISAR', 'ESPERANDO CLIENTE', 'APROBADO', 'NO APROBADO', 'TERMINADO', 'LISTO PARA ENTREGA'];
+    var nom = { 'TURNO': '📅 Turnos sin llegar', 'TERMINADO': '✅ Terminado: falta avisar la entrega' };
+    var h = '<div class="card"><h3>Órdenes activas: ' + act.length + '</h3>';
+    orden.forEach(function (e) {
+      var l = act.filter(function (o) { return (o.ETAPA || 'EN TALLER') === e; }), x = ETQ[e] || ['', '#eee', '#333'];
+      if (!l.length) return;
+      h += '<div class="tb-fila" data-e="' + esc(e) + '" style="background:' + x[1] + ';color:' + x[2] + '"><span>' + esc(nom[e] || x[0]) + '</span><b>' + l.length + '</b></div>';
+    });
+    h += '<div class="nota">Toque una etapa para ver esas órdenes.</div></div>';
+    // alertas
+    var al = [];
+    act.filter(function (o) { return o.ETAPA === 'LISTO PARA ENTREGA' && diasParq(o.FECHA_AVISO_ENTREGA) > 0; }).forEach(function (o) {
+      var d = diasParq(o.FECHA_AVISO_ENTREGA); al.push('🅿️ <b>' + o.NUMERO + '</b> ' + esc(o.NOMBRE) + ': ' + d + ' día(s) de parqueadero (' + fmt(d * tarifaParq(o.TIPO_VEHICULO)) + ')');
+    });
+    act.filter(function (o) { return o.ETAPA === 'TERMINADO'; }).forEach(function (o) { al.push('📦 <b>' + o.NUMERO + '</b> ' + esc(o.NOMBRE) + ': terminada ' + txtDias(diasDesde(o.ETAPA_FECHA)) + ', falta el aviso de entrega'); });
+    act.filter(function (o) { return o.ETAPA === 'ESPERANDO CLIENTE' && diasDesde(o.ETAPA_FECHA) >= 2; }).forEach(function (o) { al.push('🟡 <b>' + o.NUMERO + '</b> ' + esc(o.NOMBRE) + ': el cliente no responde el informe desde ' + txtDias(diasDesde(o.ETAPA_FECHA))); });
+    act.filter(function (o) { return o.ETAPA === 'INFORME POR REVISAR'; }).forEach(function (o) { al.push('📝 <b>' + o.NUMERO + '</b> ' + esc(o.NOMBRE) + ': informe por revisar'); });
+    act.filter(faltaAcepto).forEach(function (o) { al.push('⚠️ <b>' + o.NUMERO + '</b> ' + esc(o.NOMBRE) + ': ' + (esPapel(o) ? 'falta la foto de la orden firmada' : 'falta la captura del ACEPTO')); });
+    act.filter(function (o) { return o.ETAPA !== 'TURNO' && !o.TECNICO; }).forEach(function (o) { al.push('👨‍🔧 <b>' + o.NUMERO + '</b> ' + esc(o.NOMBRE) + ': sin técnico asignado'); });
+    h += '<div class="card"><h3>Pendientes</h3>' + (al.length ? al.map(function (x) { return '<div class="tb-al">' + x + '</div>'; }).join('') : '<div class="nota">Nada pendiente. ✓</div>') + '</div>';
+    // por técnico
+    var tec = {};
+    act.filter(function (o) { return o.ETAPA !== 'TURNO' && o.ETAPA !== 'LISTO PARA ENTREGA'; }).forEach(function (o) { var k = o.TECNICO || 'SIN ASIGNAR'; tec[k] = tec[k] || []; tec[k].push(o); });
+    h += '<div class="card"><h3>Vehículos en taller por técnico</h3>' + Object.keys(tec).sort().map(function (k) {
+      var l = tec[k], viejo = l.map(function (o) { return diasDesde(o.FECHA_LLEGADA || o.FECHA); }).sort(function (a, b) { return b - a; })[0];
+      return '<div class="tb-al"><b>' + esc(titulo(k)) + '</b>: ' + l.length + ' orden(es) · la más antigua lleva ' + viejo + ' día(s)</div>';
+    }).join('') + '</div>';
+    // los que más días llevan
+    var largos = act.filter(function (o) { return o.ETAPA !== 'TURNO'; }).map(function (o) { return { o: o, d: diasDesde(o.FECHA_LLEGADA || o.FECHA) }; })
+      .sort(function (a, b) { return b.d - a.d; }).slice(0, 8);
+    if (largos.length) h += '<div class="card"><h3>Más días en el taller</h3>' + largos.map(function (x) {
+      return '<div class="tb-al"><b>' + x.o.NUMERO + '</b> ' + esc(x.o.NOMBRE) + ' · ' + x.d + ' día(s) ' + badgeEtapa(x.o.ETAPA) + '</div>';
+    }).join('') + '</div>';
+    $('tableroCont').innerHTML = h;
+    $('tableroCont').querySelectorAll('.tb-fila').forEach(function (f) {
+      f.onclick = function () { $('filtroEtapa').value = f.dataset.e; $('soloFaltan').checked = false; $('soloTurnos').checked = false; verTab('Lista'); };
+    });
+  }).catch(function (e) { $('tableroCont').innerHTML = '<div class="card err">' + esc(e.message) + '</div>'; });
+}
+
 /* ---------- inicio ---------- */
 /* Genera la ORDEN DE INGRESO + ORDEN DE TRABAJO (hoja carta, dos mitades)
    reproduciendo el formato Excel de SEA. Requiere jsPDF.
    Uso: construirPDFOrden(jsPDF, datos, logoDataUrl) -> doc jsPDF          */
-function construirPDFOrden(JsPDF, d, logo) {
-  var doc = new JsPDF({ unit: 'mm', format: 'letter', orientation: 'portrait' });
+function construirPDFOrden(JsPDF, d, logo, soloIngreso) {   // soloIngreso: PDF para el cliente, sin la orden de trabajo
   var VERDE = [112, 173, 71], CLARO = [226, 239, 218], ROJO = [230, 30, 30];
   // Alturas de fila (puntos) tomadas del Excel original, filas 1..56
   var H = [14.5,11,16,13,10,12.5,12.5,12.5,10,14,14,14,14,10,14,14,14,10,14,14,12,12,12,21,21,26,10,12,10,22,11,14,14,11,12,12,12,11,11,13,13,13,13,13,13,13,13,13,13,13,13,13,12,12,12,24];
   var M = 6.35, ANCHO = 215.9 - 2 * M, totalPt = H.reduce(function (a, b) { return a + b; }, 0);
   var esc = (279.4 - 2 * M) / totalPt; // mm por punto
   var Y = [M]; for (var i = 0; i < H.length; i++) Y.push(Y[i] + H[i] * esc);
+  var doc = new JsPDF({ unit: 'mm', format: soloIngreso ? [215.9, Y[27] + M] : 'letter', orientation: soloIngreso ? 'landscape' : 'portrait' });
   var CW = ANCHO / 24;
   function col(c) { return M + (c.charCodeAt(0) - 65) * CW; }       // borde izq. de la columna
   function x2(c) { return col(c) + CW; }                              // borde der.
@@ -817,8 +1766,13 @@ function construirPDFOrden(JsPDF, d, logo) {
       var al = o.alin || 'left', pad = 1;
       var lineas = doc.splitTextToSize(t, W - 2 * pad);
       if (o.multi) {
-        var lh = tam * 0.3528 * 1.15, ty = YY + pad + tam * 0.3528;
-        var maxL = Math.max(1, Math.floor((HH - pad) / lh));
+        // si el texto es largo, se reduce la letra (hasta 4.5 pt) para que quepa completo en el recuadro
+        var lh = tam * 0.3528 * 1.15, maxL = Math.max(1, Math.floor((HH - pad) / lh));
+        while (lineas.length > maxL && tam > 4.5) {
+          tam -= 0.25; doc.setFontSize(tam); lineas = doc.splitTextToSize(t, W - 2 * pad);
+          lh = tam * 0.3528 * 1.15; maxL = Math.max(1, Math.floor((HH - pad) / lh));
+        }
+        var ty = YY + pad + tam * 0.3528;
         lineas.slice(0, maxL).forEach(function (ln, k) { doc.text(ln, X + pad, ty + k * lh); });
       } else {
         var lh2 = tam * 0.3528 * 1.1, bloque = lineas.length * lh2;
@@ -829,8 +1783,16 @@ function construirPDFOrden(JsPDF, d, logo) {
     }
   }
   function lineasRenglon(r1, r2, texto) {          // zona de renglones A..X con texto corrido
-    for (var r = r1; r <= r2; r++) caja('A' + r + ':X' + r);
-    caja('A' + r1 + ':X' + r2, { texto: texto, multi: true, tam: 7.5, borde: false });
+    var n = r2 - r1 + 1;
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(7.5);
+    var lin = texto ? doc.splitTextToSize(String(texto), ANCHO - 2) : [];
+    if (lin.length <= n) {                            // cabe: una línea de texto por renglón
+      for (var r = r1; r <= r2; r++) caja('A' + r + ':X' + r);
+      doc.setTextColor(0, 0, 0);
+      lin.forEach(function (ln, k) { doc.text(ln, M + 1, (y1(r1 + k) + y2(r1 + k)) / 2 + 0.95); });
+    } else {                                          // texto largo: recuadro sin renglones y letra más pequeña
+      caja('A' + r1 + ':X' + r2, { texto: texto, multi: true, tam: 7.5 });
+    }
   }
   function etiqueta(r, t) { caja(r, { texto: t, fill: CLARO, negrita: true, tam: 5.5, alin: 'center' }); }
   function titulo(r, t) { caja(r, { texto: t, fill: VERDE, negrita: true, tam: 6, alin: 'center', color: [255, 255, 255] }); }
@@ -857,7 +1819,7 @@ function construirPDFOrden(JsPDF, d, logo) {
   etiqueta('A7:C7', 'TELÉFONO'); caja('D7:J7', { texto: d.telefono, tam: 7.5 });
   etiqueta('K7:L7', 'E-MAIL'); caja('M7:X7', { texto: d.email, tam: 7 });
   etiqueta('A8:C8', 'TIPO VEHÍCULO'); caja('D8:J8', { texto: d.tipo, tam: 7.5 });
-  etiqueta('K8:L8', 'MODELO'); caja('M8:Q8', { texto: d.modelo, tam: 7.5 });
+  etiqueta('K8:L8', 'MODELO'); caja('M8:Q8', { texto: [d.modelo, d.motorChasis ? 'Motor/chasis: ' + d.motorChasis : ''].filter(Boolean).join(' · '), tam: d.motorChasis ? 5.8 : 7.5 });
   etiqueta('R8:S8', 'COLOR'); caja('T8:X8', { texto: d.color, tam: 7.5 });
   titulo('A9:X9', 'MOTIVO DE INGRESO REPORTADO POR EL CLIENTE');
   lineasRenglon(10, 13, d.motivo);
@@ -886,6 +1848,7 @@ function construirPDFOrden(JsPDF, d, logo) {
   caja('A27:I27', { borde: false, tam: 5, texto: 'Dirección: Av. Suba cra 50 # 91 - 82 - Bogotá, Colombia' });
   caja('J27:O27', { borde: false, tam: 5, texto: 'Celular servicio técnico: 300 3479102' });
   caja('P27:X27', { borde: false, tam: 5, texto: 'Correo: infoingenierohagd@gmail.com' });
+  if (soloIngreso) return doc;
   doc.setLineDashPattern([1, 1], 0); doc.setDrawColor(120, 120, 120);
   var ym = (y1(28) + y2(28)) / 2; doc.line(M, ym, M + ANCHO, ym); doc.setLineDashPattern([], 0);
   doc.setFillColor(255, 255, 255); doc.rect(M + ANCHO / 2 - 17, ym - 1.6, 34, 3.2, 'F');
@@ -900,7 +1863,7 @@ function construirPDFOrden(JsPDF, d, logo) {
   caja('P30:R30', { texto: dia, alin: 'center', tam: 8 }); caja('S30:U30', { texto: mes, alin: 'center', tam: 8 }); caja('V30:X30', { texto: anio, alin: 'center', tam: 8 });
   titulo('A31:X31', 'DATOS DEL CLIENTE');
   etiqueta('A32:C32', 'NOMBRE'); caja('D32:X32', { texto: v(d.nombre) + (d.telefono ? '   ·   Tel: ' + d.telefono : ''), tam: 7.5 });
-  etiqueta('A33:C33', 'TIPO VEHÍCULO'); caja('D33:X33', { texto: [d.tipo, d.modelo, d.color].filter(Boolean).join('  ·  '), tam: 7.5 });
+  etiqueta('A33:C33', 'TIPO VEHÍCULO'); caja('D33:X33', { texto: [d.tipo, d.modelo, d.color, d.motorChasis ? 'Motor/chasis: ' + d.motorChasis : ''].filter(Boolean).join('  ·  '), tam: 7.5 });
   titulo('A34:X34', 'MOTIVO DE INGRESO REPORTADO POR EL CLIENTE');
   lineasRenglon(35, 37, d.motivo);
   titulo('A38:X38', 'COTIZACIÓN');
@@ -922,6 +1885,7 @@ function construirPDFOrden(JsPDF, d, logo) {
   etiqueta('Q54:S54', 'ABONO'); caja('T54:X54', { texto: dinero(d.abono), tam: 7, alin: 'right' });
   etiqueta('Q55:S55', 'SALDO'); caja('T55:X55', { texto: dinero(d.saldo), tam: 7, alin: 'right' });
   etiqueta('A56:H56', 'NOMBRE Y FIRMA DEL TÉCNICO ENCARGADO'); caja('I56:X56');
+  if (d.tecnico) { doc.setFont('helvetica', 'bold'); doc.setFontSize(9); doc.setTextColor(0, 0, 0); doc.text('TÉCNICO ASIGNADO: ' + d.tecnico, col('I') + 1.5, (y1(56) + y2(56)) / 2 + 1.2); }
   return doc;
 }
 
