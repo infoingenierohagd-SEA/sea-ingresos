@@ -145,7 +145,7 @@
   <main id="vistaNuevo">
     <div id="avisoAcepto" class="card oculto" style="background:#fff3cd;border-color:#f0c36d">
       <b style="color:#7a5b00">⚠️ <span id="avisoAceptoTxt"></span></b>
-      <div class="nota" style="color:#7a5b00">Falta la captura del ACEPTO (WhatsApp) o la foto de la orden firmada (clientes sin WhatsApp). Adjúntela desde la pestaña Órdenes.</div>
+      <div class="nota" style="color:#7a5b00">Falta marcar la aceptación del cliente.</div>
       <button class="btn sec peq" id="btnVerFaltan" type="button">Ver cuáles faltan</button>
     </div>
     <div id="avisoInf" class="card oculto" style="background:#eeedfe;border-color:#afa9ec">
@@ -293,7 +293,7 @@
 
     <div class="card" id="cardAcepta">
       <h3>Aceptación del cliente</h3>
-      <div class="nota" style="font-size:14px" id="txtAceptacion">Al guardar, el mensaje de WhatsApp le envía al cliente las condiciones (parqueadero, garantía y tratamiento de datos) y le pide responder <b>ACEPTO</b>. Cuando responda, tome una captura y adjúntela.</div>
+      <div class="nota" style="font-size:14px" id="txtAceptacion">Al guardar, el mensaje de WhatsApp le envía al cliente las condiciones (parqueadero, garantía y tratamiento de datos) y le pide responder <b>ACEPTO</b>. Cuando responda, márquelo con <b>✓ El cliente respondió ACEPTO</b> (en la pantalla final o en Órdenes).</div>
     </div>
 
     <div id="errForm" class="err"></div>
@@ -539,7 +539,7 @@
   <div class="nota oculto" id="eiPapel">Cliente sin WhatsApp: llámelo y léale el informe (o envíelo por SMS). Luego registre su respuesta.</div>
   <div class="paso" id="eiPasoFotos"><div class="n" id="e2">2</div><div><b>Enviar las fotos del informe</b><div class="nota" id="eiFotosTxt"></div>
     <button class="btn wa peq" id="btnEiFotos">Compartir fotos</button></div></div>
-  <div class="paso" id="eiPasoResp"><div class="n" id="e3">3</div><div><b>Cuando el cliente responda</b><div class="nota">Informes › Esperando respuesta › ✅ Registrar respuesta: marque qué autorizó y adjunte la captura. Ahí mismo le avisa al técnico.</div></div></div>
+  <div class="paso" id="eiPasoResp"><div class="n" id="e3">3</div><div><b>Cuando el cliente responda</b><div class="nota">Informes › Esperando respuesta › ✅ Registrar respuesta: marque qué autorizó. Ahí mismo le avisa al técnico.</div></div></div>
   <div class="paso oculto" id="eiPasoSigue"><div class="n" id="e4">3</div><div><b>Avisar al técnico que siga</b><div class="nota">El informe no tenía ítems por autorizar: la orden quedó 🟢 Aprobado.</div>
     <button class="btn wa peq" id="btnEiTec">Avisar al técnico</button></div></div>
   <button class="btn pri" id="btnEiListo">Listo</button>
@@ -721,8 +721,8 @@ $('segCanal').addEventListener('click', function () {
   var papel = S.canal === 'papel';
   $('lblTel').textContent = papel ? 'Celular (opcional)' : 'Celular (WhatsApp) *';
   $('txtAceptacion').innerHTML = papel
-    ? 'El cliente <b>no tiene WhatsApp</b>: al guardar, imprima la orden en el computador (Órdenes › PDF), el cliente la firma y usted toma una <b>foto de la hoja firmada</b> con la app.'
-    : 'Al guardar, el mensaje de WhatsApp le envía al cliente las condiciones (parqueadero, garantía y tratamiento de datos) y le pide responder <b>ACEPTO</b>. Cuando responda, tome una captura y adjúntela.';
+    ? 'El cliente <b>no tiene WhatsApp</b>: al guardar, imprima la orden en el computador (Órdenes › PDF), el cliente la firma, se archiva la hoja y usted lo marca con <b>✓ El cliente firmó la orden</b>.'
+    : 'Al guardar, el mensaje de WhatsApp le envía al cliente las condiciones (parqueadero, garantía y tratamiento de datos) y le pide responder <b>ACEPTO</b>. Cuando responda, márquelo con <b>✓ El cliente respondió ACEPTO</b> (en la pantalla final o en Órdenes).';
 });
 $('chipsElem').querySelectorAll('.chip').forEach(function (c) {
   c.onclick = function () {
