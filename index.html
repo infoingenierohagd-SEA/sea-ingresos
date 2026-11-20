@@ -205,8 +205,10 @@
         <div><label for="f_modelo">Modelo / marca</label><input id="f_modelo" type="text"></div>
         <div><label for="f_color">Color</label><input id="f_color" type="text"></div>
       </div>
-      <label for="f_motor">N° de motor o chasis (si se puede ubicar)</label>
+      <label for="f_motor">N° de motor</label>
       <input id="f_motor" type="text" autocapitalize="characters" autocomplete="off">
+      <div class="nota">Con este número se arma la hoja de vida del vehículo (todas sus visitas al taller).</div>
+      <div id="boxHistMotor" class="estado-box oculto" style="background:#e7f1fb;color:#0c447c"></div>
     </div>
 
     <div class="card">
@@ -283,6 +285,8 @@
         <h3 style="margin:0">Últimas órdenes</h3>
         <button class="btn sec peq" id="btnRecargar" style="flex:0 0 auto;width:auto;margin:0;padding:7px 12px">↻ Actualizar</button>
       </div>
+      <div class="fila" style="margin-bottom:10px"><input id="qHoja" type="text" placeholder="Hoja de vida: N° motor, celular o nombre" autocomplete="off">
+        <button class="btn sec peq" id="btnHoja" style="flex:0 0 auto;width:auto;margin:0;padding:0 12px">📋 Buscar</button></div>
       <div class="nota">Toque “📸 Aceptó” y adjunte la captura cuando el cliente responda ACEPTO por WhatsApp. Desde el computador: “PDF” abre la orden para imprimir (Ctrl+P). Los enlaces PDF y Fotos solo abren con la cuenta de Google del negocio.</div>
       <label for="filtroEtapa" style="margin-top:10px">Etapa</label>
       <select id="filtroEtapa"><option value="">Todas</option><option value="EN TALLER">🔧 Por diagnosticar</option><option value="INFORME POR REVISAR">📝 Informe por revisar</option><option value="ESPERANDO CLIENTE">🟡 Esperando al cliente</option><option value="APROBADO">🟢 Aprobado</option><option value="NO APROBADO">🔴 No aprobado</option><option value="TERMINADO">✅ Terminado (avisar entrega)</option><option value="LISTO PARA ENTREGA">📦 Avisado, por recoger</option><option value="ENTREGADO">🏁 Entregado</option></select>
@@ -477,6 +481,12 @@
   <button class="btn sec peq" id="btnEnCancelar">Cancelar</button>
 </div></div>
 
+<div id="mHoja" class="modal oculto"><div class="card">
+  <div class="fila" style="align-items:center"><h3 style="margin:0" id="hjTitulo">Hoja de vida</h3>
+    <button class="btn sec peq" id="btnHjCerrar" style="flex:0 0 auto;width:auto;margin:0;padding:7px 12px">Cerrar</button></div>
+  <div id="hjCuerpo"></div>
+</div></div>
+
 <div id="mTecServ" class="modal oculto"><div class="card">
   <div class="estado-box" style="background:#eaf3de;color:#27500a" id="tsTxt"></div>
   <div class="paso"><div class="n" id="ts1">📲</div><div><b>Avisar a servicio técnico</b><div class="nota">Abre el WhatsApp de servicio técnico (300 347 9102) con el mensaje listo. Toque enviar.</div>
@@ -553,6 +563,7 @@ function mockApi(o) {
       if (o.accion === 'enviarInforme') { var ie = mockInf(o.id); ie.final = o.datos; ie.TEXTO_FINAL = o.texto; ie.REVISO = us; ie.FECHA_ENVIO = hoyISO() + ' 10:00'; var sin = !o.datos.items.length; ie.ESTADO = sin ? 'RESPONDIDO' : 'ENVIADO'; if (sin) ie.respuesta = []; mockFila(ie.NUMERO).ETAPA = sin ? 'APROBADO' : 'ESPERANDO CLIENTE'; return res({ ok: true, etapa: mockFila(ie.NUMERO).ETAPA }); }
       if (o.accion === 'respuesta') { var ir = mockInf(o.id); ir.respuesta = o.aprobados; ir.ESTADO = 'RESPONDIDO'; var todos = mockAprob(ir.NUMERO); var fr2 = mockFila(ir.NUMERO); fr2.ETAPA = todos.length ? 'APROBADO' : 'NO APROBADO'; fr2.COBRO_REVISION = todos.length ? '' : '60000'; fr2.ITEMS_APROBADOS = JSON.stringify(todos); return res({ ok: true, etapa: fr2.ETAPA, aprobados: todos, valorRevision: 60000 }); }
       if (o.accion === 'fotosInforme') return res({ ok: true, fotos: mockInf(o.id).fotos });
+      if (o.accion === 'historial') { var qm = normMotor(o.q), qd = String(o.q).replace(/\D/g, ''); return res({ ok: true, diasGarantia: 5, ordenes: mock.filas.slice().reverse().filter(function (f) { return String(f.NUMERO) !== String(o.excluir) && ((qm.length >= 4 && normMotor(f.MOTOR_CHASIS) === qm) || (qd.length >= 7 && String(f.TELEFONO).slice(-10) === qd.slice(-10))); }).map(function (f) { var g = ''; if (f.FECHA_ENTREGA) { var dg = new Date(f.FECHA_ENTREGA.slice(0, 10) + 'T12:00'); dg.setDate(dg.getDate() + 5); g = dg.toISOString().slice(0, 10); } return Object.assign({}, f, { MOTOR: f.MOTOR_CHASIS, GARANTIA_HASTA: g, por: normMotor(f.MOTOR_CHASIS) === qm ? 'motor' : 'celular' }); }) }); }
       if (o.accion === 'avisoEntrega') { var fa = mockFila(o.numero); if (fa.ETAPA !== 'LISTO PARA ENTREGA') { fa.ETAPA = 'LISTO PARA ENTREGA'; fa.FECHA_AVISO_ENTREGA = o.fechaPrueba || (hoyISO() + ' 10:00'); } return res({ ok: true }); }
       if (o.accion === 'entregar') { var fn = mockFila(o.numero); var dd2 = diasParq(fn.FECHA_AVISO_ENTREGA); fn.ETAPA = 'ENTREGADO'; fn.FECHA_ENTREGA = hoyISO() + ' 16:00'; fn.COBRO_PARQUEADERO = String(dd2 * tarifaParq(fn.TIPO_VEHICULO)); return res({ ok: true, dias: dd2, cobro: dd2 * tarifaParq(fn.TIPO_VEHICULO) }); }
       if (o.accion === 'enviarCorreo') { var fc = mockFila(o.numero); if (!fc.EMAIL) return rej(new Error('La orden no tiene un correo válido')); fc.CORREO_ENVIADO = 'hoy a ' + fc.EMAIL; mock.correos = (mock.correos || []).concat([{ to: fc.EMAIL, texto: o.texto }]); return res({ ok: true, email: fc.EMAIL, pdf: !!fc.pdfCli, fotos: fc.NUM_ARCHIVOS, omitidos: 0 }); }
@@ -772,6 +783,7 @@ $('btnGuardar').onclick = function () {
   if (e.length) { $('errForm').textContent = 'Falta: ' + e.join(', ') + '.'; return; }
   $('errForm').textContent = '';
   if (d.modo !== 'turno' && !S.archivos.length && !confirm('No hay fotos de ingreso. ¿Guardar de todas formas?')) return;
+  if (d.modo !== 'turno' && !d.motorChasis && !confirm('No escribió el N° de motor: esta visita no quedará en la hoja de vida del vehículo. ¿Guardar de todas formas?')) return;
   d.saldo = (d.total === '' && d.abono === '') ? '' : Number(d.total || 0) - Number(d.abono || 0);
   $('resumen').innerHTML = '<b>' + esc(d.nombre) + '</b> · ' + esc(d.telefono) + '<br>' + esc(d.tipo) + ' ' + esc(d.modelo) + '<br>Motivo: ' + esc(d.motivo.slice(0, 90)) +
     (d.modo === 'turno' ? '<br><b>Turno: ' + esc(fmtTurno(d.turno)) + '</b>' : '<br>Fotos/videos: ' + S.archivos.length) + (d.modo === 'recibir' ? '<br>Orden del turno: <b>' + S.recibir.NUMERO + '</b>' : '') + (d.total !== '' ? '<br>Total ' + fmt(d.total) + ' · Abono ' + fmt(d.abono) + ' · Saldo ' + fmt(d.saldo) : '') +
@@ -999,7 +1011,7 @@ function limpiarForm() {
   $('segTurno').querySelector('[data-v=taller]').click();
   ['f_nombre', 'f_telefono', 'f_cedula', 'f_email', 'f_tipo', 'f_modelo', 'f_color', 'f_motivo', 'f_estado', 'f_elementos', 'f_cotizacion', 'f_total', 'f_abono', 'f_medio', 'f_turnoFecha', 'f_turnoHora', 'f_tecnico', 'f_motor']
     .forEach(function (id) { $(id).value = ''; });
-  $('items').innerHTML = '';
+  $('items').innerHTML = ''; mostrar('boxHistMotor', false); _motorBuscado = '';
   $('segCanal').querySelector('[data-v=whatsapp]').click();
   $('chipsElem').querySelectorAll('.chip').forEach(function (c) { c.classList.remove('on'); });
   S.archivos = []; pintarFotos(); recalcular(false); aplicarModo();
@@ -1088,7 +1100,7 @@ function cargarLista() {
         '<div class="acc">' + (o.PDF_URL ? '<a href="' + esc(o.PDF_URL) + '" target="_blank">PDF</a>' : '') + (o.CARPETA_URL ? '<a href="' + esc(o.CARPETA_URL) + '" target="_blank">Fotos</a>' : '') +
         (o.CAPTURA_ACEPTO ? '<a href="' + esc(o.CAPTURA_ACEPTO) + '" target="_blank">Captura</a>' : '') +
         '<button data-a="acp">' + (o.ACEPTACION ? 'Quitar aceptación' : (esPapel(o) ? '📸 Firmada' : '📸 Aceptó')) + '</button>' +
-        '<button data-a="tec">👨‍🔧 Técnico</button>' + (o.TECNICO && o.ESTADO !== 'ANULADA' ? '<button data-a="avt">📲 Avisar técnico</button>' : '') +
+        (o.MOTOR_CHASIS ? '<button data-a="hoja">📋 Hoja de vida</button>' : '') + '<button data-a="tec">👨‍🔧 Técnico</button>' + (o.TECNICO && o.ESTADO !== 'ANULADA' ? '<button data-a="avt">📲 Avisar técnico</button>' : '') +
         (o.ESTADO !== 'ANULADA' && (['APROBADO', 'NO APROBADO', 'TERMINADO'].indexOf(o.ETAPA) >= 0 || (o.ETAPA === 'EN TALLER' && !o.ETAPA_FECHA)) ? '<button data-a="ent">📦 Aviso de entrega</button>' : '') +
         (o.ESTADO !== 'ANULADA' && o.ETAPA === 'LISTO PARA ENTREGA' ? '<button data-a="ent">💬 Reenviar aviso</button><button data-a="fin">🏁 Entregado</button>' : '') +
         (o.EMAIL && o.ESTADO !== 'ANULADA' ? '<button data-a="mail">📧 ' + (o.CORREO_ENVIADO ? 'Reenviar correo' : 'Enviar correo') + '</button>' : '') +
@@ -1101,6 +1113,8 @@ function cargarLista() {
         if (n !== 0 && !val) { alert('Número no válido.'); return; }
         api({ accion: 'marcar', numero: o.NUMERO, campo: 'TECNICO', valor: val }).then(cargarLista);
       };
+      var bh = d.querySelector('[data-a=hoja]');
+      if (bh) bh.onclick = function () { abrirHoja(o.MOTOR_CHASIS); };
       var be = d.querySelector('[data-a=ent]'), bf = d.querySelector('[data-a=fin]');
       if (be) be.onclick = function () { abrirEntrega(o); };
       if (bf) bf.onclick = function () { marcarEntregado(o); };
@@ -1210,7 +1224,7 @@ function compsCompletos(guardados) {   // todos los componentes de la plantilla,
 function msgTecOrden(o) {
   var L = ['🔧 *Nueva orden de trabajo No. ' + o.numero + '* – SEA', '',
     '🔹 Vehículo: ' + [o.tipo, o.modelo, o.color].filter(Boolean).join(' ')];
-  if (o.motor) L.push('🔹 Motor/chasis: ' + o.motor);
+  if (o.motor) L.push('🔹 N° motor: ' + o.motor);
   L.push('🔹 Motivo: ' + (o.motivo || ''));
   if (o.estado) L.push('🔹 Estado físico al ingreso: ' + o.estado);
   if (o.elementos) L.push('🔹 Deja: ' + o.elementos);
@@ -1252,7 +1266,7 @@ function cargarMis() {
       var d = document.createElement('div'); d.className = 'card';
       d.innerHTML = '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><span style="font-weight:800;color:var(--rojo);font-size:20px">' + esc(o.NUMERO) + '</span>' + badgeEtapa(o.ETAPA) + '</div>' +
         '<div style="margin-top:4px;font-weight:600">' + esc([o.TIPO_VEHICULO, o.MODELO, o.COLOR].filter(Boolean).join(' · ')) + '</div>' +
-        '<div class="nota">Cliente: ' + esc(o.CLIENTE) + ' · Ingresó ' + esc(o.FECHA) + (o.MOTOR_CHASIS ? ' · Motor/chasis ' + esc(o.MOTOR_CHASIS) : '') + '</div>' +
+        '<div class="nota">Cliente: ' + esc(o.CLIENTE) + ' · Ingresó ' + esc(o.FECHA) + (o.MOTOR_CHASIS ? ' · N° motor ' + esc(o.MOTOR_CHASIS) : '') + '</div>' +
         '<div style="font-size:14px;margin-top:6px"><b>Motivo:</b> ' + esc(o.MOTIVO) + '</div>' +
         '<div class="estado-box" style="background:' + x[1] + ';color:' + x[2] + '">' + esc(x[3]) + '</div>' +
         itemsTec(o) +
@@ -1732,6 +1746,55 @@ function cargarTablero() {
   }).catch(function (e) { $('tableroCont').innerHTML = '<div class="card err">' + esc(e.message) + '</div>'; });
 }
 
+/* =================== HOJA DE VIDA DEL VEHÍCULO (por N° de motor) =================== */
+function normMotor(x) { return String(x || '').toUpperCase().replace(/[^A-Z0-9]/g, ''); }
+function enGarantia(o) { return o.GARANTIA_HASTA && o.GARANTIA_HASTA >= hoyISO(); }
+function hojaHTML(l) {
+  if (!l.length) return '<div class="nota">No se encontraron órdenes.</div>';
+  return l.map(function (o) {
+    var it = []; try { it = JSON.parse(o.ITEMS_APROBADOS || '[]'); } catch (e) {}
+    var serv = it.length ? it.map(function (i) { return '✅ ' + esc((i.codigo ? i.codigo + ' ' : '') + linItem(i, true)); }).join('<br>') : (numDe(o.COBRO_REVISION) ? 'Solo revisión técnica: ' + fmt(numDe(o.COBRO_REVISION)) + ' (no autorizó la reparación)' : '<span class="nota">Sin ítems autorizados registrados</span>');
+    return '<div style="border-top:1px solid #edf1ea;padding:10px 0;font-size:14px"><div><b style="color:var(--rojo);font-size:16px">' + esc(o.NUMERO) + '</b> · ' + esc(o.FECHA) + ' ' + (o.ESTADO === 'ANULADA' ? '<span class="badge">anulada</span>' : badgeEtapa(o.ETAPA)) + '</div>' +
+      '<div>' + esc([o.TIPO_VEHICULO, o.MODELO, o.COLOR].filter(Boolean).join(' · ')) + (o.MOTOR ? ' · <b>Motor ' + esc(o.MOTOR) + '</b>' : '') + '</div>' +
+      '<div class="nota" style="margin-top:2px">' + esc(o.NOMBRE) + ' · ' + esc(o.TELEFONO) + ' · 👨‍🔧 ' + esc(titulo(o.TECNICO || 'sin técnico')) + '</div>' +
+      '<div style="margin-top:4px"><b>Motivo:</b> ' + esc(o.MOTIVO) + '</div><div style="margin-top:4px">' + serv + '</div>' +
+      (numDe(o.COBRO_PARQUEADERO) ? '<div>🅿️ Parqueadero cobrado: ' + fmt(numDe(o.COBRO_PARQUEADERO)) + '</div>' : '') +
+      (o.FECHA_ENTREGA ? '<div style="margin-top:4px">🏁 Entregado ' + esc(o.FECHA_ENTREGA.slice(0, 10)) + ' · ' + (enGarantia(o) ? '<b style="color:#a32d2d">en garantía hasta ' + esc(o.GARANTIA_HASTA) + '</b>' : 'garantía hasta ' + esc(o.GARANTIA_HASTA)) + '</div>' : '') +
+      (o.PDF_URL ? '<div style="margin-top:4px"><a href="' + esc(o.PDF_URL) + '" target="_blank">Ver orden PDF</a></div>' : '') + '</div>';
+  }).join('');
+}
+function abrirHoja(q, excluir) {
+  q = String(q || '').trim();
+  if (q.length < 3) { alert('Escriba el N° de motor, el celular o el nombre (mínimo 3 caracteres).'); return; }
+  $('hjTitulo').textContent = 'Hoja de vida · ' + q; $('hjCuerpo').innerHTML = '<div class="nota">Buscando…</div>'; mostrar('mHoja', true);
+  api({ accion: 'historial', q: q, excluir: excluir || '' }).then(function (r) {
+    var motores = {}; r.ordenes.forEach(function (o) { if (o.MOTOR) motores[normMotor(o.MOTOR)] = 1; });
+    var n = Object.keys(motores).length;
+    $('hjCuerpo').innerHTML = '<div class="nota">' + r.ordenes.length + ' orden(es)' + (r.ordenes.length && r.ordenes[0].por !== 'motor' && n > 1 ? ' de ' + n + ' vehículos distintos (búsqueda por ' + r.ordenes[0].por + ')' : '') + '. Garantía: ' + (r.diasGarantia || 5) + ' días desde la entrega.</div>' + hojaHTML(r.ordenes);
+  }).catch(function (e) { $('hjCuerpo').innerHTML = '<div class="err">' + esc(e.message) + '</div>'; });
+}
+$('btnHoja').onclick = function () { abrirHoja($('qHoja').value); };
+$('qHoja').addEventListener('keydown', function (e) { if (e.key === 'Enter') abrirHoja($('qHoja').value); });
+$('btnHjCerrar').onclick = function () { mostrar('mHoja', false); };
+/* al escribir el N° de motor en un ingreso: avisa si el vehículo ya vino y si está en garantía */
+var _motorBuscado = '';
+$('f_motor').addEventListener('change', function () {
+  var m = normMotor(this.value), box = $('boxHistMotor');
+  if (m.length < 4) { mostrar('boxHistMotor', false); _motorBuscado = ''; return; }
+  if (m === _motorBuscado) return; _motorBuscado = m;
+  api({ accion: 'historial', q: m, excluir: S.recibir ? S.recibir.NUMERO : '' }).then(function (r) {
+    var l = r.ordenes.filter(function (o) { return o.por === 'motor' && o.ESTADO !== 'ANULADA'; });
+    if (!l.length) { box.style.background = '#eaf3de'; box.style.color = '#27500a'; box.innerHTML = '🆕 Primera visita de este vehículo.'; mostrar('boxHistMotor', true); return; }
+    var g = l.filter(enGarantia)[0];
+    box.style.background = g ? '#fde7e7' : '#e7f1fb'; box.style.color = g ? '#a32d2d' : '#0c447c';
+    box.innerHTML = (g ? '⚠️ <b>EN GARANTÍA:</b> orden ' + esc(g.NUMERO) + ' entregada el ' + esc(g.FECHA_ENTREGA.slice(0, 10)) + ' (garantía hasta ' + esc(g.GARANTIA_HASTA) + ').<br>' : '') +
+      '📋 Este vehículo ya vino ' + l.length + (l.length === 1 ? ' vez' : ' veces') + ': ' + l.slice(0, 3).map(function (o) { return esc(o.NUMERO) + ' (' + esc(o.FECHA) + ', ' + esc(String(o.MOTIVO).slice(0, 40)) + ')'; }).join(' · ') +
+      '<button class="btn sec peq" type="button" id="btnVerHojaMotor">Ver hoja de vida</button>';
+    $('btnVerHojaMotor').onclick = function () { abrirHoja(m, S.recibir ? S.recibir.NUMERO : ''); };
+    mostrar('boxHistMotor', true);
+  }).catch(function () { mostrar('boxHistMotor', false); });
+});
+
 /* ---------- inicio ---------- */
 /* Genera la ORDEN DE INGRESO + ORDEN DE TRABAJO (hoja carta, dos mitades)
    reproduciendo el formato Excel de SEA. Requiere jsPDF.
@@ -1819,7 +1882,7 @@ function construirPDFOrden(JsPDF, d, logo, soloIngreso) {   // soloIngreso: PDF 
   etiqueta('A7:C7', 'TELÉFONO'); caja('D7:J7', { texto: d.telefono, tam: 7.5 });
   etiqueta('K7:L7', 'E-MAIL'); caja('M7:X7', { texto: d.email, tam: 7 });
   etiqueta('A8:C8', 'TIPO VEHÍCULO'); caja('D8:J8', { texto: d.tipo, tam: 7.5 });
-  etiqueta('K8:L8', 'MODELO'); caja('M8:Q8', { texto: [d.modelo, d.motorChasis ? 'Motor/chasis: ' + d.motorChasis : ''].filter(Boolean).join(' · '), tam: d.motorChasis ? 5.8 : 7.5 });
+  etiqueta('K8:L8', 'MODELO'); caja('M8:Q8', { texto: [d.modelo, d.motorChasis ? 'N° motor: ' + d.motorChasis : ''].filter(Boolean).join(' · '), tam: d.motorChasis ? 5.8 : 7.5 });
   etiqueta('R8:S8', 'COLOR'); caja('T8:X8', { texto: d.color, tam: 7.5 });
   titulo('A9:X9', 'MOTIVO DE INGRESO REPORTADO POR EL CLIENTE');
   lineasRenglon(10, 13, d.motivo);
@@ -1863,7 +1926,7 @@ function construirPDFOrden(JsPDF, d, logo, soloIngreso) {   // soloIngreso: PDF 
   caja('P30:R30', { texto: dia, alin: 'center', tam: 8 }); caja('S30:U30', { texto: mes, alin: 'center', tam: 8 }); caja('V30:X30', { texto: anio, alin: 'center', tam: 8 });
   titulo('A31:X31', 'DATOS DEL CLIENTE');
   etiqueta('A32:C32', 'NOMBRE'); caja('D32:X32', { texto: v(d.nombre) + (d.telefono ? '   ·   Tel: ' + d.telefono : ''), tam: 7.5 });
-  etiqueta('A33:C33', 'TIPO VEHÍCULO'); caja('D33:X33', { texto: [d.tipo, d.modelo, d.color, d.motorChasis ? 'Motor/chasis: ' + d.motorChasis : ''].filter(Boolean).join('  ·  '), tam: 7.5 });
+  etiqueta('A33:C33', 'TIPO VEHÍCULO'); caja('D33:X33', { texto: [d.tipo, d.modelo, d.color, d.motorChasis ? 'N° motor: ' + d.motorChasis : ''].filter(Boolean).join('  ·  '), tam: 7.5 });
   titulo('A34:X34', 'MOTIVO DE INGRESO REPORTADO POR EL CLIENTE');
   lineasRenglon(35, 37, d.motivo);
   titulo('A38:X38', 'COTIZACIÓN');
