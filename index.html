@@ -719,7 +719,7 @@ function mockAprob(n, hasta) { var out = []; mock.infs.forEach(function (x) { if
 function mockTec(o, tq, res, rej) {
   if (o.accion === 'login') return res({ ok: true, usuario: tq, rol: 'tecnico', waServicio: '3003479102' });
   if (o.accion === 'misOrdenes') return res({ ok: true, ordenes: mock.filas.filter(function (f) { return f.TECNICO === tq && f.ESTADO !== 'ANULADA' && f.ETAPA !== 'TURNO'; }).map(function (f) {
-    return { AVISO_SERVICIO: f.AVISO_SERVICIO, AVISO_SERVICIO_ENVIADO: f.AVISO_SERVICIO_ENVIADO, NUMERO: f.NUMERO, FECHA: f.FECHA, CLIENTE: f.NOMBRE, TIPO_VEHICULO: f.TIPO_VEHICULO, MODELO: f.MODELO, COLOR: f.COLOR, MOTOR_CHASIS: f.MOTOR_CHASIS, MOTIVO: f.MOTIVO, ESTADO_FISICO: f.ESTADO_FISICO, ELEMENTOS: f.ELEMENTOS, COTIZACION: f.COTIZACION, ITEMS: f.ITEMS, TOTAL: f.TOTAL, ABONO: f.ABONO, ETAPA: f.ETAPA, INFORME_DEVUELTO: f.INFORME_DEVUELTO || '',
+    return { AVISO_SERVICIO: f.AVISO_SERVICIO, AVISO_SERVICIO_ENVIADO: f.AVISO_SERVICIO_ENVIADO, NUMERO: f.NUMERO, FECHA: f.FECHA, CLIENTE: f.NOMBRE, TIPO_VEHICULO: f.TIPO_VEHICULO, MODELO: f.MODELO, COLOR: f.COLOR, MOTOR_CHASIS: f.MOTOR_CHASIS, MOTIVO: f.MOTIVO, ESTADO_FISICO: f.ESTADO_FISICO, ELEMENTOS: f.ELEMENTOS, COTIZACION: f.COTIZACION, ITEMS: f.ITEMS, TOTAL: f.TOTAL, ABONO: f.ABONO, ETAPA: f.ETAPA, INFORME_DEVUELTO: f.INFORME_DEVUELTO || '', NUM_FOTOS_FIN: (f._fin || []).length,
       informes: mock.infs.filter(function (x) { return x.NUMERO == f.NUMERO; }).map(function (x) { return { ID: x.ID, RONDA: x.RONDA, TIPO: x.TIPO, ESTADO: x.ESTADO, datos: x.final || x.original, respuesta: x.respuesta || null, numFotos: x.fotos.length }; }) };
   }).reverse() });
   if (o.accion === 'guardarInforme') { var f = mockFila(o.numero); if (!f || f.TECNICO !== tq) return rej(new Error('No asignada')); if (f.ETAPA === 'INFORME POR REVISAR' || f.ETAPA === 'ESPERANDO CLIENTE') return rej(new Error('Ya tiene un informe pendiente'));
@@ -1569,6 +1569,8 @@ function cargarMis() {
       if (o.INFORME_DEVUELTO && infDev) { boton(acc, '✏️ Corregir informe', 'pri', function () { abrirFormInf(o, !!(infDev.datos && infDev.datos.hallazgo), infDev); }); c.appendChild(d); return; }
       if (o.ETAPA === 'EN TALLER') boton(acc, '📝 Hacer informe', 'pri', function () { abrirFormInf(o, false); });
       if (o.ETAPA === 'APROBADO') boton(acc, '➕ Hallazgo nuevo (requiere autorización)', 'sec', function () { abrirFormInf(o, true); });
+      if (o.ETAPA === 'TERMINADO' || o.ETAPA === 'LISTO PARA ENTREGA')
+        boton(acc, Number(o.NUM_FOTOS_FIN) ? '📸 Agregar más fotos de cómo quedó (' + o.NUM_FOTOS_FIN + ' ya subidas)' : '📸 Agregar fotos de cómo quedó', Number(o.NUM_FOTOS_FIN) ? 'sec' : 'pri', function () { abrirFin(o, true); });
       if (o.ETAPA === 'APROBADO' || o.ETAPA === 'NO APROBADO')
         boton(acc, o.ETAPA === 'APROBADO' ? '✅ Terminé lo autorizado' : '✅ Vehículo armado, listo para entrega', 'pri', function () { abrirFin(o); });
       c.appendChild(d);
@@ -1703,10 +1705,11 @@ function enviarInfTec() {
 }
 $('btnRecargarMis').onclick = cargarMis;
 /* terminar: con fotos de cómo quedó (obligatorias si hubo trabajos autorizados) */
-function abrirFin(o) {
-  var obl = o.ETAPA === 'APROBADO';
-  S.fin = { o: o, obl: obl, fotos: [], subidos: {} };
-  $('fnTitulo').textContent = (obl ? 'Terminé lo autorizado · Orden ' : 'Vehículo armado · Orden ') + o.NUMERO;
+function abrirFin(o, soloFotos) {   // soloFotos: la orden ya está terminada y se agregan fotos después
+  var obl = soloFotos || o.ETAPA === 'APROBADO';
+  S.fin = { o: o, obl: obl, fotos: [], subidos: {}, soloFotos: !!soloFotos, base: Number(o.NUM_FOTOS_FIN || 0) };
+  $('fnTitulo').textContent = (soloFotos ? 'Fotos de cómo quedó · Orden ' : (obl ? 'Terminé lo autorizado · Orden ' : 'Vehículo armado · Orden ')) + o.NUMERO;
+  $('btnFnOk').textContent = soloFotos ? '📤 Subir fotos' : '✅ Marcar terminada';
   $('fnSub').textContent = [o.TIPO_VEHICULO, o.MODELO, o.COLOR].filter(Boolean).join(' ') + ' · ' + titulo(o.CLIENTE);
   $('fnObl').textContent = obl ? '*' : '(opcional)';
   $('fnAyuda').textContent = obl ? 'Mínimo 1 foto. Se las envían al cliente con el aviso de entrega: tómelas bien, con el vehículo limpio y armado.' : 'Si quiere, tome una foto de cómo queda armado el vehículo.';
@@ -1735,7 +1738,7 @@ $('btnFnOk').onclick = function () {
 };
 function terminarConFotos() {
   var F = S.fin, o = F.o, n = F.fotos.length;
-  var msg = '✅ *Orden ' + ordNom(o.NUMERO, o.CLIENTE) + ' terminada*' + (o.ETAPA === 'NO APROBADO' ? ' (sin reparar: el cliente no autorizó; cobrar la revisión)' : '') + '\n🔹 ' + [o.TIPO_VEHICULO, o.MODELO, o.COLOR].filter(Boolean).join(' ') +
+  var msg = F.soloFotos ? '📸 *Orden ' + ordNom(o.NUMERO, o.CLIENTE) + '* – se agregaron ' + n + ' foto(s) del trabajo terminado en la app.\n🔹 ' + [o.TIPO_VEHICULO, o.MODELO, o.COLOR].filter(Boolean).join(' ') + '\n👨‍🔧 ' + titulo(S.usuario) + '\n\nYa las puede compartir con el cliente en el aviso de entrega (Órdenes › Avisar entrega).' : '✅ *Orden ' + ordNom(o.NUMERO, o.CLIENTE) + ' terminada*' + (o.ETAPA === 'NO APROBADO' ? ' (sin reparar: el cliente no autorizó; cobrar la revisión)' : '') + '\n🔹 ' + [o.TIPO_VEHICULO, o.MODELO, o.COLOR].filter(Boolean).join(' ') +
     (n ? '\n📸 ' + n + ' foto(s) del trabajo terminado en la app' : '') + '\n👨‍🔧 ' + titulo(S.usuario) + '\n\nEl vehículo está listo para avisarle la entrega al cliente.';
   $('btnReintentar').onclick = terminarConFotos;
   mostrar('mProceso', true); mostrar('btnReintentar', false); $('procErr').textContent = ''; $('procTitulo').textContent = 'Orden ' + o.NUMERO;
@@ -1745,19 +1748,21 @@ function terminarConFotos() {
       seq = seq.then(function () {
         if (F.subidos[i]) return;
         progreso(10 + Math.round(80 * i / Math.max(1, files.length)), 'Subiendo foto ' + (i + 1) + ' de ' + files.length + '…');
-        return b64(f).then(function (x) { return api({ accion: 'subir', esFin: true, numero: o.NUMERO, nombre: o.NUMERO + '_FIN_' + String(i + 1).padStart(2, '0') + '.jpg', mime: 'image/jpeg', b64: x }); })
+        return b64(f).then(function (x) { return api({ accion: 'subir', esFin: true, numero: o.NUMERO, nombre: o.NUMERO + '_FIN_' + String((F.base || 0) + i + 1).padStart(2, '0') + '.jpg', mime: 'image/jpeg', b64: x }); })
           .then(function () { F.subidos[i] = true; });
       });
     });
     return seq;
   }).then(function () {
+    if (F.soloFotos) return;
     progreso(95, 'Marcando terminada…');
     return api({ accion: 'terminar', numero: o.NUMERO, avisoServicio: msg });
   }).then(function () {
     progreso(100, 'Listo');
     setTimeout(function () {
       mostrar('mProceso', false); cargarMis();
-      avisoServicio('✓ La orden ' + o.NUMERO + ' quedó marcada como TERMINADA en la app' + (n ? ' con ' + n + ' foto(s)' : '') + '. Ahora avísele a Alexander (servicio técnico) para que le avise la entrega al cliente.', msg, o.NUMERO);
+      avisoServicio(F.soloFotos ? '✓ Se subieron ' + n + ' foto(s) de cómo quedó la orden ' + o.NUMERO + '. Avísele a Alexander (servicio técnico) para que se las envíe al cliente.'
+        : '✓ La orden ' + o.NUMERO + ' quedó marcada como TERMINADA en la app' + (n ? ' con ' + n + ' foto(s)' : '') + '. Ahora avísele a Alexander (servicio técnico) para que le avise la entrega al cliente.', msg, o.NUMERO);
     }, 400);
   }).catch(function (e) { $('procErr').textContent = 'No se pudo terminar: ' + e.message + '. Revise la conexión y reintente (las fotos que ya subieron no se repiten).'; mostrar('btnReintentar', true); });
 }
