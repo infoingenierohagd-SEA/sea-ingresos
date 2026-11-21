@@ -439,6 +439,7 @@
       <div id="infItems"></div>
       <button class="btn sec peq" id="btnInfItem" type="button">+ Agregar ítem</button>
       <div class="total"><span>Total</span><span id="infTotal">$ 0</span></div>
+      <div class="nota oculto" id="infAbono" style="text-align:right"></div>
     </div>
     <div class="card">
       <h3>Fotos</h3>
@@ -1525,11 +1526,11 @@ function abrirFormInf(o, hallazgo, prev) {   // prev = informe devuelto: se abre
   var soloServ = hallazgo || esRepuesto(o.TIPO_VEHICULO);   // repuestos (batería, cargador…): sin componentes, solo informe de servicio
   var pd = prev ? JSON.parse(JSON.stringify(prev.datos || {})) : null;
   S.inf = { orden: o, hallazgo: hallazgo, tipo: soloServ ? 'servicio' : ((pd && pd.tipo) || 'mantenimiento'), comps: compsCompletos(pd ? pd.componentes : []),
-    items: pd ? (pd.items || []).map(function (i) { return Object.assign({}, i); }) : itemsIniciales(o, hallazgo), fotos: [], proc: null, corrige: !!prev, fotosPrev: prev ? Number(prev.numFotos || 0) : 0 };
+    items: itemsIniciales(o, hallazgo, prev), fotos: [], proc: null, corrige: !!prev, fotosPrev: prev ? Number(prev.numFotos || 0) : 0 };
   $('infTitulo').textContent = (prev ? 'Corregir ' + (hallazgo ? 'hallazgo' : 'informe') + ' · Orden ' : (hallazgo ? 'Hallazgo nuevo · Orden ' : 'Informe · Orden ')) + o.NUMERO;
   $('infSub').textContent = [o.TIPO_VEHICULO, o.MODELO, o.COLOR].filter(Boolean).join(' ') + ' · Motivo: ' + o.MOTIVO;
   var ci = cotizIngreso(o);
-  $('infPrelim').innerHTML = ci.hay && !hallazgo ? (S.inf.items.length && !prev ? '💰 Los ítems de la cotización preliminar del ingreso ya están cargados abajo. Revise, corrija valores y complete el código de cada uno.' : '💰 Cotización preliminar del ingreso: ' + esc([ci.texto, ci.total ? 'total ' + fmt(ci.total) : ''].filter(Boolean).join(' · '))) + (ci.abono ? '<br><b>💵 El cliente abonó ' + fmt(ci.abono) + '.</b>' : '') : '';
+  $('infPrelim').innerHTML = ci.hay && !hallazgo ? (itemsPrelim(o).length && S.inf.items.length ? '💰 Los ítems de la cotización preliminar del ingreso ya están cargados abajo. Revise, corrija valores y complete el código de cada uno.' : '💰 Cotización preliminar del ingreso: ' + esc([ci.texto, ci.total ? 'total ' + fmt(ci.total) : ''].filter(Boolean).join(' · '))) + (ci.abono ? '<br><b>💵 El cliente abonó ' + fmt(ci.abono) + '.</b>' : '') : '';
   mostrar('infPrelim', !!$('infPrelim').innerHTML);
   mostrar('boxTipoInf', !soloServ);
   $('segTipoInf').querySelectorAll('button').forEach(function (b) { b.classList.toggle('on', b.dataset.v === S.inf.tipo); });
@@ -1540,12 +1541,22 @@ function abrirFormInf(o, hallazgo, prev) {   // prev = informe devuelto: se abre
   pintarItems($('infItems'), S.inf.items, totalInf); totalInf();
   pintarFotosInf(); aplicarTipoInf(); verTec('form');
 }
-function itemsIniciales(o, hallazgo) {   // solo el primer informe de la orden (no hallazgos): parte de la cotización del ingreso
-  if (hallazgo || (o.informes || []).length) return [];
+function itemsPrelim(o) {   // ítems de la cotización del ingreso; si solo hay texto + total, un ítem con ese texto (sin valores ni "abono…")
   var c = cotizIngreso(o);
   if (c.items.length) return c.items;
-  if (c.texto && c.total) return [{ codigo: '', concepto: c.texto.toUpperCase().slice(0, 80), cantidad: 1, valor: c.total }];
+  if (c.texto && c.total) {
+    var con = c.texto.replace(/abono.*$/i, '').replace(/\$?\s*\d[\d.,]*/g, '').replace(/[\s·,;:\-–]+$/g, '').replace(/\s{2,}/g, ' ').trim() || 'COTIZACIÓN PRELIMINAR';
+    return [{ codigo: '', concepto: con.toUpperCase().slice(0, 80), cantidad: 1, valor: c.total }];
+  }
   return [];
+}
+function itemsIniciales(o, hallazgo, prev) {   // el primer informe (no hallazgos) parte de la cotización del ingreso
+  var ya = prev ? ((prev.datos && prev.datos.items) || []).map(function (i) { return Object.assign({}, i); }) : [];
+  var primero = prev ? Number(prev.RONDA) === 1 : !(o.informes || []).length;
+  if (hallazgo || !primero) return ya;
+  var norm = function (x) { return String(x || '').toUpperCase().replace(/[^A-Z0-9Ñ]/g, ''); };
+  itemsPrelim(o).forEach(function (i) { if (!ya.some(function (y) { return norm(y.concepto) === norm(i.concepto); })) ya.unshift(i); });   // en una corrección, agrega lo del ingreso que falte
+  return ya;
 }
 function aplicarTipoInf() {
   var mant = S.inf.tipo === 'mantenimiento';
@@ -1555,7 +1566,12 @@ function aplicarTipoInf() {
 $('segTipoInf').querySelectorAll('button').forEach(function (b) {
   b.onclick = function () { $('segTipoInf').querySelectorAll('button').forEach(function (x) { x.classList.remove('on'); }); b.classList.add('on'); S.inf.tipo = b.dataset.v; aplicarTipoInf(); };
 });
-function totalInf() { $('infTotal').textContent = fmt(sumaItems(S.inf.items)); }
+function totalInf() {
+  var t = sumaItems(S.inf.items), ab = S.inf.hallazgo ? 0 : cotizIngreso(S.inf.orden).abono;
+  $('infTotal').textContent = fmt(t);
+  $('infAbono').innerHTML = ab ? 'Abono del cliente: <b>' + fmt(ab) + '</b> · Saldo: <b>' + fmt(t - ab) + '</b><br>El abono no se escribe como ítem: se descuenta solo en el mensaje al cliente.' : '';
+  mostrar('infAbono', !!ab);
+}
 $('btnInfItem').onclick = function () { S.inf.items.push({ concepto: '', cantidad: 1, valor: '' }); pintarItems($('infItems'), S.inf.items, totalInf); var l = $('infItems').querySelectorAll('.i_con'); if (l.length) l[l.length - 1].focus(); };
 $('btnInfCam').onclick = function () { $('inInfCam').click(); };
 $('btnInfGal').onclick = function () { $('inInfGal').click(); };
