@@ -20,6 +20,13 @@
   nav button { flex:1; padding:12px 4px; border:0; background:none; font-size:14px; font-weight:600; color:var(--gris); border-bottom:3px solid transparent; }
   .tb-fila { display:flex; justify-content:space-between; align-items:center; padding:11px 12px; border-radius:9px; margin-top:7px; font-size:15px; cursor:pointer; }
   .tb-fila b { font-size:20px; }
+  .tb-tec { border:1px solid #e3e8df; border-radius:10px; padding:4px 12px 10px; margin-top:9px; }
+  .tb-tec summary { display:flex; justify-content:space-between; align-items:center; padding:9px 0; cursor:pointer; font-size:16px; list-style:none; }
+  .tb-tec summary::-webkit-details-marker { display:none; }
+  .tb-tec summary::after { content:'▾'; color:#888; margin-left:8px; } .tb-tec[open] summary::after { content:'▴'; }
+  .tb-cnt { margin-left:auto; background:#2f6b1f; color:#fff; border-radius:20px; padding:2px 11px; font-weight:700; }
+  .tb-ord { display:flex; justify-content:space-between; align-items:center; gap:8px; font-size:14px; padding:8px 0; border-top:1px solid #edf1ea; cursor:pointer; }
+  .tb-ord .badge { white-space:nowrap; }
   .tb-al { font-size:14px; padding:8px 0; border-bottom:1px solid #edf1ea; } .tb-al:last-child { border-bottom:0; }
   nav button.on { color:var(--verde); border-bottom-color:var(--verde); }
   main { max-width:720px; margin:0 auto; padding:12px 12px 120px; }
@@ -528,6 +535,20 @@
   <div class="fila" style="align-items:center"><h3 style="margin:0" id="hjTitulo">Hoja de vida</h3>
     <button class="btn sec peq" id="btnHjCerrar" style="flex:0 0 auto;width:auto;margin:0;padding:7px 12px">Cerrar</button></div>
   <div id="hjCuerpo"></div>
+</div></div>
+
+<div id="mTec" class="modal oculto"><div class="card">
+  <h3 id="mtTitulo">Asignar técnico</h3>
+  <div class="nota" id="mtSub"></div>
+  <div id="mtPaso1"><div id="mtLista"></div>
+    <button class="btn sec peq" id="btnMtQuitar" type="button">Quitar técnico</button>
+    <button class="btn sec" id="btnMtCancelar" type="button">Cancelar</button></div>
+  <div id="mtPaso2" class="oculto">
+    <div class="estado-box" style="background:#eaf3de;color:#27500a" id="mtOk"></div>
+    <p style="margin:12px 0 6px">¿Le avisa ahora por WhatsApp? Le llega la orden de trabajo (vehículo, motivo, estado y la advertencia de no hacer arreglos sin autorización).</p>
+    <button class="btn wa" id="btnMtAvisar" type="button"></button>
+    <button class="btn sec" id="btnMtNo" type="button">Ahora no (después con 📲 Avisar técnico)</button></div>
+  <div class="err" id="errMt"></div>
 </div></div>
 
 <div id="mEntregado" class="modal oculto"><div class="card">
@@ -1179,7 +1200,8 @@ function cargarLista() {
   api({ accion: 'listar', cantidad: 300 }).then(function (r) {
     var fe = $('filtroEtapa').value;
     var lista = $('soloFaltan').checked ? r.ordenes.filter(faltaAcepto) : ($('soloTurnos').checked ? r.ordenes.filter(esTurnoPend) :
-      (fe === '__SINENVIO' ? r.ordenes.filter(sinEnvio) : fe === '__SINAVISO' ? r.ordenes.filter(sinAvisoTec) : (fe === '__ENTREGAS' ? r.ordenes.filter(entregaPend) :
+      (fe.indexOf('__TEC:') === 0 ? r.ordenes.filter(function (o) { return o.ESTADO !== 'ANULADA' && o.ETAPA !== 'ENTREGADO' && o.ETAPA !== 'TURNO' && (o.TECNICO || 'SIN ASIGNAR') === fe.slice(6); }) :
+      fe === '__SINENVIO' ? r.ordenes.filter(sinEnvio) : fe === '__SINAVISO' ? r.ordenes.filter(sinAvisoTec) : (fe === '__ENTREGAS' ? r.ordenes.filter(entregaPend) :
       (fe ? r.ordenes.filter(function (o) { return o.ESTADO !== 'ANULADA' && (o.ETAPA || 'EN TALLER') === fe; }) : r.ordenes.slice(0, 80)))));
     pintarAviso(r.ordenes.filter(faltaAcepto)); pintarTurnos(r.ordenes); pintarAvisosCoord(r.ordenes);
     if (!lista.length) { $('lista').innerHTML = '<div class="nota">' + ($('soloFaltan').checked ? 'Todas las órdenes tienen su aceptación. ✓' : ($('soloTurnos').checked ? 'No hay turnos pendientes.' : (fe ? 'No hay órdenes en esa etapa.' : 'Aún no hay órdenes.'))) + '</div>'; return; }
@@ -1206,14 +1228,7 @@ function cargarLista() {
         (o.ESTADO !== 'ANULADA' && o.ETAPA === 'LISTO PARA ENTREGA' ? '<button data-a="ent">💬 Reenviar aviso</button><button data-a="fin">🏁 Entregado</button>' : '') +
         (o.EMAIL && o.ESTADO !== 'ANULADA' ? '<button data-a="mail">📧 ' + (o.CORREO_ENVIADO ? 'Reenviar correo' : 'Enviar correo') + '</button>' : '') +
         '<button data-a="imp">' + (o.IMPRESA ? 'Desmarcar' : '✓ Impresa') + '</button>' + (o.ESTADO !== 'ANULADA' ? '<button data-a="anu">Anular</button>' : '') + '</div>';
-      d.querySelector('[data-a=tec]').onclick = function () {
-        var l = S.tecnicos || [].slice.call($('f_tecnico').options).map(function (x) { return x.value; }).filter(Boolean);
-        var r2 = prompt('Técnico para la orden ' + o.NUMERO + ' (actual: ' + (o.TECNICO || 'sin asignar') + ')\n\n' + l.map(function (x, i) { return (i + 1) + ' = ' + x; }).join('\n') + '\n0 = quitar\n\nEscriba el número:');
-        if (r2 === null || r2.trim() === '') return;
-        var n = Number(r2), val = n === 0 ? '' : l[n - 1];
-        if (n !== 0 && !val) { alert('Número no válido.'); return; }
-        api({ accion: 'marcar', numero: o.NUMERO, campo: 'TECNICO', valor: val }).then(cargarLista);
-      };
+      d.querySelector('[data-a=tec]').onclick = function () { abrirAsignar(o); };
       var brv = d.querySelector('[data-a=reenv]');
       if (brv) brv.onclick = function () { abrirReenvio(o); };
       var avr = d.querySelector('[data-a=avr]');
@@ -1868,7 +1883,40 @@ $('btnEfGuardar').onclick = function () {
 };
 $('btnEfCancelar').onclick = function () { mostrar('mEntregado', false); };
 
+/* =================== ASIGNAR TÉCNICO (y avisarle de una vez) =================== */
+function abrirAsignar(o) {
+  var l = S.tecnicos || [].slice.call($('f_tecnico').options).map(function (x) { return x.value; }).filter(Boolean);
+  S.asig = { o: o, tec: '' };
+  $('mtTitulo').textContent = 'Técnico · Orden ' + o.NUMERO;
+  $('mtSub').textContent = o.NOMBRE + ' · ' + [o.TIPO_VEHICULO, o.MODELO].filter(Boolean).join(' ') + ' · actual: ' + (o.TECNICO ? titulo(o.TECNICO) : 'sin asignar');
+  $('errMt').textContent = ''; mostrar('mtPaso1', true); mostrar('mtPaso2', false); mostrar('btnMtQuitar', !!o.TECNICO);
+  var c = $('mtLista'); c.innerHTML = '';
+  l.forEach(function (t) { var b = boton(c, '👨‍🔧 ' + titulo(t) + (t === o.TECNICO ? ' (actual)' : ''), t === o.TECNICO ? 'sec' : 'pri', function () { guardarAsignacion(t); }); b.style.display = 'block'; b.style.width = '100%'; b.style.marginTop = '8px'; });
+  mostrar('mTec', true);
+}
+function guardarAsignacion(t) {
+  var o = S.asig.o; $('errMt').textContent = '';
+  [].forEach.call(document.querySelectorAll('#mtPaso1 button'), function (b) { b.disabled = true; });
+  api({ accion: 'marcar', numero: o.NUMERO, campo: 'TECNICO', valor: t }).then(function () {
+    [].forEach.call(document.querySelectorAll('#mtPaso1 button'), function (b) { b.disabled = false; });
+    o.TECNICO = t; S.asig.tec = t;
+    if (!t) { mostrar('mTec', false); cargarLista(); return; }
+    $('mtOk').textContent = '✓ Orden ' + o.NUMERO + ' asignada a ' + titulo(t) + '. Ya le aparece en Mis órdenes.';
+    $('btnMtAvisar').textContent = '📲 Avisar a ' + titulo(t) + ' por WhatsApp';
+    mostrar('mtPaso1', false); mostrar('mtPaso2', true);
+  }).catch(function (e) { [].forEach.call(document.querySelectorAll('#mtPaso1 button'), function (b) { b.disabled = false; }); $('errMt').textContent = e.message; });
+}
+$('btnMtQuitar').onclick = function () { if (confirm('¿Quitar el técnico de la orden ' + S.asig.o.NUMERO + '?')) guardarAsignacion(''); };
+$('btnMtCancelar').onclick = function () { mostrar('mTec', false); };
+$('btnMtAvisar').onclick = function () { if (avisarTecnico(S.asig.tec, msgTecOrden(ordenParaTec(S.asig.o)))) { mostrar('mTec', false); cargarLista(); } };
+$('btnMtNo').onclick = function () { mostrar('mTec', false); cargarLista(); };
+
 /* =================== TABLERO =================== */
+function filtrarTecnico(t) {
+  var sel = $('filtroEtapa'), v = '__TEC:' + t, op = Array.prototype.filter.call(sel.options, function (x) { return x.value === v; })[0];
+  if (!op) { op = document.createElement('option'); op.value = v; op.textContent = t === 'SIN ASIGNAR' ? '⚠️ Sin técnico asignado' : '👨‍🔧 Técnico: ' + titulo(t); sel.appendChild(op); }
+  sel.value = v; $('soloFaltan').checked = false; $('soloTurnos').checked = false; verTab('Lista');
+}
 function cargarTablero() {
   $('tableroCont').innerHTML = '<div class="nota">Cargando…</div>';
   api({ accion: 'listar', cantidad: 400 }).then(function (r) {
@@ -1895,13 +1943,21 @@ function cargarTablero() {
     act.filter(faltaAcepto).forEach(function (o) { al.push('⚠️ <b>' + o.NUMERO + '</b> ' + esc(o.NOMBRE) + ': ' + (esPapel(o) ? 'falta la foto de la orden firmada' : 'falta la captura del ACEPTO')); });
     act.filter(function (o) { return o.ETAPA !== 'TURNO' && !o.TECNICO; }).forEach(function (o) { al.push('👨‍🔧 <b>' + o.NUMERO + '</b> ' + esc(o.NOMBRE) + ': sin técnico asignado'); });
     h += '<div class="card"><h3>Pendientes</h3>' + (al.length ? al.map(function (x) { return '<div class="tb-al">' + x + '</div>'; }).join('') : '<div class="nota">Nada pendiente. ✓</div>') + '</div>';
-    // por técnico
+    // por técnico: cada técnico con sus órdenes (toque el nombre para abrir / cerrar)
     var tec = {};
-    act.filter(function (o) { return o.ETAPA !== 'TURNO' && o.ETAPA !== 'LISTO PARA ENTREGA'; }).forEach(function (o) { var k = o.TECNICO || 'SIN ASIGNAR'; tec[k] = tec[k] || []; tec[k].push(o); });
-    h += '<div class="card"><h3>Vehículos en taller por técnico</h3>' + Object.keys(tec).sort().map(function (k) {
-      var l = tec[k], viejo = l.map(function (o) { return diasDesde(o.FECHA_LLEGADA || o.FECHA); }).sort(function (a, b) { return b - a; })[0];
-      return '<div class="tb-al"><b>' + esc(titulo(k)) + '</b>: ' + l.length + ' orden(es) · la más antigua lleva ' + viejo + ' día(s)</div>';
-    }).join('') + '</div>';
+    act.filter(function (o) { return o.ETAPA !== 'TURNO'; }).forEach(function (o) { var k = o.TECNICO || 'SIN ASIGNAR'; tec[k] = tec[k] || []; tec[k].push(o); });
+    var ks = Object.keys(tec).sort(function (a, b) { return a === 'SIN ASIGNAR' ? 1 : b === 'SIN ASIGNAR' ? -1 : (a < b ? -1 : 1); });
+    h += '<div class="card"><h3>Órdenes por técnico</h3>' + (ks.length ? ks.map(function (k) {
+      var l = tec[k].slice().sort(function (a, b) { return orden.indexOf(a.ETAPA || 'EN TALLER') - orden.indexOf(b.ETAPA || 'EN TALLER') || numDe(a.NUMERO) - numDe(b.NUMERO); });
+      var enTaller = l.filter(function (o) { return o.ETAPA !== 'LISTO PARA ENTREGA'; }).length, listas = l.length - enTaller;
+      var viejo = l.map(function (o) { return diasDesde(o.FECHA_LLEGADA || o.FECHA); }).sort(function (a, b) { return b - a; })[0];
+      return '<details class="tb-tec"' + (ks.length <= 3 ? ' open' : '') + '><summary><span>' + (k === 'SIN ASIGNAR' ? '⚠️ <b>Sin técnico asignado</b>' : '👨‍🔧 <b>' + esc(titulo(k)) + '</b>') + '</span><span class="tb-cnt">' + l.length + '</span></summary>' +
+        '<div class="nota">' + enTaller + ' en trabajo' + (listas ? ' · ' + listas + ' lista(s) para entrega' : '') + ' · la más antigua lleva ' + viejo + ' día(s)</div>' +
+        l.map(function (o) { var dd = diasDesde(o.FECHA_LLEGADA || o.FECHA);
+          return '<div class="tb-ord" data-n="' + o.NUMERO + '"><div><b>' + o.NUMERO + '</b> ' + esc(o.NOMBRE) + '<div class="nota">' + esc([o.TIPO_VEHICULO, o.MODELO].filter(Boolean).join(' · ')) + ' · ' + dd + ' día(s)</div></div>' + badgeEtapa(o.ETAPA || 'EN TALLER') + '</div>';
+        }).join('') +
+        '<button class="btn sec peq tb-vertec" data-t="' + esc(k) + '" type="button">Ver estas órdenes en Órdenes</button></details>';
+    }).join('') : '<div class="nota">No hay vehículos en el taller.</div>') + '</div>';
     // los que más días llevan
     var largos = act.filter(function (o) { return o.ETAPA !== 'TURNO'; }).map(function (o) { return { o: o, d: diasDesde(o.FECHA_LLEGADA || o.FECHA) }; })
       .sort(function (a, b) { return b.d - a.d; }).slice(0, 8);
@@ -1909,6 +1965,9 @@ function cargarTablero() {
       return '<div class="tb-al"><b>' + x.o.NUMERO + '</b> ' + esc(x.o.NOMBRE) + ' · ' + x.d + ' día(s) ' + badgeEtapa(x.o.ETAPA) + '</div>';
     }).join('') + '</div>';
     $('tableroCont').innerHTML = h;
+    $('tableroCont').querySelectorAll('.tb-vertec').forEach(function (b) { b.onclick = function () { filtrarTecnico(b.dataset.t); }; });
+    $('tableroCont').querySelectorAll('.tb-ord').forEach(function (f) { f.onclick = function () {
+      var o = act.filter(function (x) { return String(x.NUMERO) === f.dataset.n; })[0]; if (o) filtrarTecnico(o.TECNICO || 'SIN ASIGNAR'); }; });
     $('tableroCont').querySelectorAll('.tb-fila').forEach(function (f) {
       f.onclick = function () { $('filtroEtapa').value = f.dataset.e; $('soloFaltan').checked = false; $('soloTurnos').checked = false; verTab('Lista'); };
     });
