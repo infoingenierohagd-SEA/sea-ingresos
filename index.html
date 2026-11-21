@@ -415,6 +415,7 @@
       </div>
       <div class="nota" id="infSub"></div>
       <div class="estado-box oculto" id="infDevBox" style="background:#fde7e7;color:#a32d2d"></div>
+      <div class="estado-box oculto" id="infPrelim" style="background:#fff8e1;color:#5a4300"></div>
       <div id="boxTipoInf">
         <label style="margin-top:10px">Tipo de informe</label>
         <div class="seg" id="segTipoInf"><button data-v="mantenimiento" class="on">Mantenimiento</button><button data-v="servicio">Servicio / reparación</button></div>
@@ -693,7 +694,7 @@ function mockAprob(n, hasta) { var out = []; mock.infs.forEach(function (x) { if
 function mockTec(o, tq, res, rej) {
   if (o.accion === 'login') return res({ ok: true, usuario: tq, rol: 'tecnico', waServicio: '3003479102' });
   if (o.accion === 'misOrdenes') return res({ ok: true, ordenes: mock.filas.filter(function (f) { return f.TECNICO === tq && f.ESTADO !== 'ANULADA' && f.ETAPA !== 'TURNO'; }).map(function (f) {
-    return { AVISO_SERVICIO: f.AVISO_SERVICIO, AVISO_SERVICIO_ENVIADO: f.AVISO_SERVICIO_ENVIADO, NUMERO: f.NUMERO, FECHA: f.FECHA, CLIENTE: String(f.NOMBRE).split(' ')[0], TIPO_VEHICULO: f.TIPO_VEHICULO, MODELO: f.MODELO, COLOR: f.COLOR, MOTOR_CHASIS: f.MOTOR_CHASIS, MOTIVO: f.MOTIVO, ESTADO_FISICO: f.ESTADO_FISICO, ELEMENTOS: f.ELEMENTOS, COTIZACION: f.COTIZACION, ETAPA: f.ETAPA, INFORME_DEVUELTO: f.INFORME_DEVUELTO || '',
+    return { AVISO_SERVICIO: f.AVISO_SERVICIO, AVISO_SERVICIO_ENVIADO: f.AVISO_SERVICIO_ENVIADO, NUMERO: f.NUMERO, FECHA: f.FECHA, CLIENTE: String(f.NOMBRE).split(' ')[0], TIPO_VEHICULO: f.TIPO_VEHICULO, MODELO: f.MODELO, COLOR: f.COLOR, MOTOR_CHASIS: f.MOTOR_CHASIS, MOTIVO: f.MOTIVO, ESTADO_FISICO: f.ESTADO_FISICO, ELEMENTOS: f.ELEMENTOS, COTIZACION: f.COTIZACION, ITEMS: f.ITEMS, TOTAL: f.TOTAL, ABONO: f.ABONO, ETAPA: f.ETAPA, INFORME_DEVUELTO: f.INFORME_DEVUELTO || '',
       informes: mock.infs.filter(function (x) { return x.NUMERO == f.NUMERO; }).map(function (x) { return { ID: x.ID, RONDA: x.RONDA, TIPO: x.TIPO, ESTADO: x.ESTADO, datos: x.final || x.original, respuesta: x.respuesta || null, numFotos: x.fotos.length }; }) };
   }).reverse() });
   if (o.accion === 'guardarInforme') { var f = mockFila(o.numero); if (!f || f.TECNICO !== tq) return rej(new Error('No asignada')); if (f.ETAPA === 'INFORME POR REVISAR' || f.ETAPA === 'ESPERANDO CLIENTE') return rej(new Error('Ya tiene un informe pendiente'));
@@ -1411,8 +1412,14 @@ function msgTecOrden(o) {
   L.push('🔹 Motivo: ' + (o.motivo || ''));
   if (o.estado) L.push('🔹 Estado físico al ingreso: ' + o.estado);
   if (o.elementos) L.push('🔹 Deja: ' + o.elementos);
-  if (o.cotizacion) L.push('🔹 Cotización preliminar: ' + o.cotizacion);
-  (o.items || []).forEach(function (i) { L.push('   • ' + linItem(i, false)); });
+  var its = (o.items || []).filter(function (i) { return i && (i.concepto || Number(i.valor)); });
+  if (o.cotizacion || its.length || Number(o.total) || Number(o.abono)) {
+    L.push('', '💰 *Cotización preliminar del ingreso*');
+    if (o.cotizacion) L.push(o.cotizacion);
+    its.forEach(function (i) { L.push('   • ' + (i.codigo ? i.codigo + ' · ' : '') + linItem(i, true)); });
+    var tt = Number(o.total) || sumaItems(its); if (tt) L.push('Total cotizado: ' + fmt(tt));
+    L.push(Number(o.abono) ? '💵 El cliente abonó ' + fmt(o.abono) : 'Sin abono.');
+  }
   L.push('', 'Revise el vehículo y haga el informe en la app › Mis órdenes:', appUrl(), '',
     '⚠️ No haga repuestos ni arreglos que requieran autorización del cliente hasta que la orden salga 🟢 Aprobado.');
   return L.join('\n');
@@ -1420,7 +1427,23 @@ function msgTecOrden(o) {
 function ordenParaTec(o) {   // fila de la hoja (MAYÚSCULAS) → datos para el aviso
   var items = []; try { items = JSON.parse(o.ITEMS || '[]'); } catch (e) {}
   return { numero: o.NUMERO, tipo: o.TIPO_VEHICULO, modelo: o.MODELO, color: o.COLOR, motor: o.MOTOR_CHASIS, motivo: o.MOTIVO,
-    estado: o.ESTADO_FISICO, elementos: o.ELEMENTOS, cotizacion: o.COTIZACION, items: items };
+    estado: o.ESTADO_FISICO, elementos: o.ELEMENTOS, cotizacion: o.COTIZACION, items: items, total: numDe(o.TOTAL), abono: numDe(o.ABONO) };
+}
+/* cotización preliminar que se escribió en el ingreso (ítems, o el texto + total si no hubo ítems) */
+function cotizIngreso(o) {
+  var it = []; try { it = JSON.parse(o.ITEMS || '[]') || []; } catch (e) {}
+  it = it.filter(function (i) { return i && (i.concepto || Number(i.valor)); }).map(function (i) { return { codigo: i.codigo || '', concepto: i.concepto || '', cantidad: Number(i.cantidad) || 1, valor: Number(i.valor) || 0 }; });
+  var total = Number(numDe(o.TOTAL) || 0) || sumaItems(it), abono = Number(numDe(o.ABONO) || 0), texto = String(o.COTIZACION || '').trim();
+  return { items: it, texto: texto, total: total, abono: abono, hay: !!(it.length || texto || total || abono) };
+}
+function htmlCotizIngreso(o) {
+  var c = cotizIngreso(o); if (!c.hay) return '';
+  return '<div class="estado-box" style="background:#fff8e1;color:#5a4300;border:1px solid #f3d27a"><b>💰 Cotización preliminar del ingreso</b>' +
+    (c.texto ? '<div style="margin-top:4px">' + esc(c.texto) + '</div>' : '') +
+    c.items.map(function (i) { return '<div>• ' + esc((i.codigo ? i.codigo + ' · ' : '') + linItem(i, true)) + '</div>'; }).join('') +
+    (c.total ? '<div style="margin-top:4px"><b>Total cotizado: ' + fmt(c.total) + '</b></div>' : '') +
+    (c.abono ? '<div><b>💵 El cliente abonó ' + fmt(c.abono) + '</b></div>' : '<div>Sin abono.</div>') +
+    '<div style="font-size:12.5px;margin-top:4px">Al hacer el informe, estos ítems ya vienen cargados en la cotización: revíselos y complete el código.</div></div>';
 }
 function avisarTecnico(nombre, texto) {
   var cel = (S.celTec || {})[nombre];
@@ -1457,12 +1480,13 @@ function cargarMis() {
         '<div style="margin-top:4px;font-weight:600">' + esc([o.TIPO_VEHICULO, o.MODELO, o.COLOR].filter(Boolean).join(' · ')) + '</div>' +
         '<div class="nota">Cliente: ' + esc(o.CLIENTE) + ' · Ingresó ' + esc(o.FECHA) + (o.MOTOR_CHASIS ? ' · N° motor ' + esc(o.MOTOR_CHASIS) : '') + '</div>' +
         '<div style="font-size:14px;margin-top:6px"><b>Motivo:</b> ' + esc(o.MOTIVO) + '</div>' +
+        htmlCotizIngreso(o) +
         (o.INFORME_DEVUELTO ? '<div class="estado-box" style="background:#fde7e7;color:#a32d2d;border:2px solid #f09595"><b>↩️ Informe devuelto para corregir</b><br>' + esc(String(o.INFORME_DEVUELTO).replace(/\s*\([^()]*\)\s*$/, '')) + '<br><span style="font-size:13px">Toque ✏️ Corregir informe: le aparece lo que ya había llenado.</span></div>'
           : '<div class="estado-box" style="background:' + x[1] + ';color:' + x[2] + '">' + esc(x[3]) + '</div>') +
         itemsTec(o) +
         '<details><summary>Detalle del ingreso</summary><div style="font-size:14px;margin-top:6px">' +
         '<div><b>Estado físico:</b> ' + esc(o.ESTADO_FISICO || '—') + '</div><div><b>Deja:</b> ' + esc(o.ELEMENTOS || '—') + '</div>' +
-        '<div><b>Cotización preliminar:</b> ' + esc(o.COTIZACION || '—') + '</div></div></details><div class="accTec"></div>';
+        '</div></details><div class="accTec"></div>';
       var acc = d.querySelector('.accTec');
       if (o.AVISO_SERVICIO && !o.AVISO_SERVICIO_ENVIADO)
         boton(acc, '📲 Avisar a Alexander (servicio técnico) por WhatsApp', 'wa', function () { enviarAvisoServicio(o.NUMERO, o.AVISO_SERVICIO); });
@@ -1501,9 +1525,12 @@ function abrirFormInf(o, hallazgo, prev) {   // prev = informe devuelto: se abre
   var soloServ = hallazgo || esRepuesto(o.TIPO_VEHICULO);   // repuestos (batería, cargador…): sin componentes, solo informe de servicio
   var pd = prev ? JSON.parse(JSON.stringify(prev.datos || {})) : null;
   S.inf = { orden: o, hallazgo: hallazgo, tipo: soloServ ? 'servicio' : ((pd && pd.tipo) || 'mantenimiento'), comps: compsCompletos(pd ? pd.componentes : []),
-    items: pd ? (pd.items || []).map(function (i) { return Object.assign({}, i); }) : [], fotos: [], proc: null, corrige: !!prev, fotosPrev: prev ? Number(prev.numFotos || 0) : 0 };
+    items: pd ? (pd.items || []).map(function (i) { return Object.assign({}, i); }) : itemsIniciales(o, hallazgo), fotos: [], proc: null, corrige: !!prev, fotosPrev: prev ? Number(prev.numFotos || 0) : 0 };
   $('infTitulo').textContent = (prev ? 'Corregir ' + (hallazgo ? 'hallazgo' : 'informe') + ' · Orden ' : (hallazgo ? 'Hallazgo nuevo · Orden ' : 'Informe · Orden ')) + o.NUMERO;
   $('infSub').textContent = [o.TIPO_VEHICULO, o.MODELO, o.COLOR].filter(Boolean).join(' ') + ' · Motivo: ' + o.MOTIVO;
+  var ci = cotizIngreso(o);
+  $('infPrelim').innerHTML = ci.hay && !hallazgo ? (S.inf.items.length && !prev ? '💰 Los ítems de la cotización preliminar del ingreso ya están cargados abajo. Revise, corrija valores y complete el código de cada uno.' : '💰 Cotización preliminar del ingreso: ' + esc([ci.texto, ci.total ? 'total ' + fmt(ci.total) : ''].filter(Boolean).join(' · '))) + (ci.abono ? '<br><b>💵 El cliente abonó ' + fmt(ci.abono) + '.</b>' : '') : '';
+  mostrar('infPrelim', !!$('infPrelim').innerHTML);
   mostrar('boxTipoInf', !soloServ);
   $('segTipoInf').querySelectorAll('button').forEach(function (b) { b.classList.toggle('on', b.dataset.v === S.inf.tipo); });
   $('infDesc').value = pd ? [pd.descripcion, pd.observaciones].filter(Boolean).join('\n\n') : ''; $('errInf').textContent = '';
@@ -1512,6 +1539,13 @@ function abrirFormInf(o, hallazgo, prev) {   // prev = informe devuelto: se abre
   pintarComponentes($('infComps'), S.inf.comps);
   pintarItems($('infItems'), S.inf.items, totalInf); totalInf();
   pintarFotosInf(); aplicarTipoInf(); verTec('form');
+}
+function itemsIniciales(o, hallazgo) {   // solo el primer informe de la orden (no hallazgos): parte de la cotización del ingreso
+  if (hallazgo || (o.informes || []).length) return [];
+  var c = cotizIngreso(o);
+  if (c.items.length) return c.items;
+  if (c.texto && c.total) return [{ codigo: '', concepto: c.texto.toUpperCase().slice(0, 80), cantidad: 1, valor: c.total }];
+  return [];
 }
 function aplicarTipoInf() {
   var mant = S.inf.tipo === 'mantenimiento';
@@ -1868,7 +1902,7 @@ $('btnRpListo').onclick = function () {
 /* ---- aviso al técnico al crear la orden ---- */
 $('btnAvisoTec').onclick = function () {
   var P = S.ultima, d = P.datos;
-  if (avisarTecnico(d.tecnico, msgTecOrden({ numero: P.numero, tipo: d.tipo, modelo: d.modelo, color: d.color, motor: d.motorChasis, motivo: d.motivo, estado: d.estado, elementos: d.elementos, cotizacion: d.cotizacion, items: d.items }))) $('pt').classList.add('ok');
+  if (avisarTecnico(d.tecnico, msgTecOrden({ numero: P.numero, tipo: d.tipo, modelo: d.modelo, color: d.color, motor: d.motorChasis, motivo: d.motivo, estado: d.estado, elementos: d.elementos, cotizacion: d.cotizacion, items: d.items, total: d.total, abono: d.abono }))) $('pt').classList.add('ok');
 };
 
 /* =================================================================
