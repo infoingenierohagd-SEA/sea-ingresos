@@ -899,8 +899,8 @@ $('btnCamara').onclick = function () { $('inCamara').click(); };
 $('btnGaleria').onclick = function () { $('inGaleria').click(); };
 $('btnVideo').onclick = function () { $('inVideo').click(); };
 $('inVideo').onchange = function () { recibirArchivos(this.files); this.value = ''; };
-var MAX_VIDEO = 60 * 1024 * 1024, PARTE = 8 * 1024 * 1024, GRANDE = 20 * 1024 * 1024;
-/* sube un archivo: normal si es liviano; por partes de 8 MB (directo a Drive) si pesa más de 20 MB. extra = numero, nombre, mime, informe/esFin */
+var MAX_VIDEO = 60 * 1024 * 1024, PARTE = 4 * 1024 * 1024, GRANDE = 4 * 1024 * 1024;   // todo lo que pase de 4 MB va por partes: más seguro con datos móviles
+/* sube un archivo: normal si es liviano; por partes de 4 MB (directo a Drive) si pesa más de 4 MB. extra = numero, nombre, mime, informe/esFin */
 function subirMedio(extra, file, alAvanzar) {
   if ((file.size || 0) <= GRANDE) return b64(file).then(function (x) { return api(Object.assign({ accion: 'subir', b64: x }, extra)); });
   return api(Object.assign({ accion: 'iniciarSubida', tam: file.size }, extra)).then(function (r) {
