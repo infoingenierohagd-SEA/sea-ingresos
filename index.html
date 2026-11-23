@@ -1129,11 +1129,12 @@ $('btnWaChat').onclick = function () {
   window.open('https://api.whatsapp.com/send?phone=' + telWa(P.datos.telefono) + '&text=' + encodeURIComponent(mensaje(P)), '_blank');
 };
 /* grupos de máx. 5 archivos y ~15 MB: con muchas fotos o videos, el celular rechaza compartirlos todos de una vez */
+function unoAUno() { try { return localStorage.getItem('sea_share1') === '1'; } catch (e) { return false; } }
 function lotesArchivos(files) {
-  var out = [], cur = [], sz = 0;
+  var out = [], cur = [], sz = 0, max = unoAUno() ? 1 : 5;   // si el celular rechazó varias juntas, se comparten de a una
   (files || []).forEach(function (f) {
     var t = f.size || 0;
-    if (cur.length && (cur.length >= 5 || sz + t > 15e6)) { out.push(cur); cur = []; sz = 0; }
+    if (cur.length && (cur.length >= max || sz + t > 15e6)) { out.push(cur); cur = []; sz = 0; }
     cur.push(f); sz += t;
   });
   if (cur.length) out.push(cur);
@@ -1150,9 +1151,15 @@ function compartir(files, texto, paso, btnId) {
     if (q.i >= n) { $(paso).classList.add('ok'); if (btnId) $(btnId).textContent = q.label + ' ✓'; delete S.colas[paso]; }
     else if (btnId) $(btnId).textContent = q.label + ' (grupo ' + (q.i + 1) + ' de ' + n + ')';
   }
-  compartirLote(lote, paso, avanzar);
+  compartirLote(lote, paso, avanzar, function () {   // el celular rechazó varias juntas: desde ahora de a una
+    try { localStorage.setItem('sea_share1', '1'); } catch (e) {}
+    var hechos = q.lotes.slice(0, q.i).reduce(function (a, l) { return a + l.length; }, 0);
+    q.lotes = lotesArchivos(files.slice(hechos)); q.i = 0; n = q.lotes.length;
+    if (btnId) $(btnId).textContent = q.label + ' (1 de ' + n + ')';
+    alert('Este celular no deja compartir varias fotos juntas. Desde ahora se envían de a una:\n\nToque otra vez el botón "' + q.label + '" (' + n + ' veces) y elija el chat del cliente cada vez.');
+  });
 }
-function compartirLote(files, paso, alTerminar) {
+function compartirLote(files, paso, alTerminar, deAUna) {
   // Solo archivos (sin texto): algunos celulares y Windows rechazan archivos + texto con "Permission denied".
   var data = { files: files };
   function respaldo(msg) {
@@ -1163,7 +1170,11 @@ function compartirLote(files, paso, alTerminar) {
   }
   if (navigator.canShare && navigator.canShare(data)) {
     navigator.share(data).then(function () { alTerminar(); })
-      .catch(function (e) { if (e.name !== 'AbortError') respaldo('Este equipo no permitió compartir directamente (' + (e.name || 'error') + (files.length > 1 ? ', ' + files.length + ' archivos' : '') + ').'); });
+      .catch(function (e) {
+        if (e.name === 'AbortError') return;
+        if (e.name === 'NotAllowedError' && files.length > 1 && deAUna) return deAUna();   // probar de a una antes de descargar
+        respaldo('Este equipo no permitió compartir directamente (' + (e.name || 'error') + (files.length > 1 ? ', ' + files.length + ' archivos' : '') + ').\n\nTambién puede abrirlas desde Órdenes › Fotos (carpeta de Drive) y compartirlas desde la app de Drive.');
+      });
   } else {
     respaldo('Este navegador no permite compartir archivos.');
   }
