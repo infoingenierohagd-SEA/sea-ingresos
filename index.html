@@ -164,6 +164,10 @@
       <div class="nota" style="color:#3c3489" id="avisoInfDet"></div>
       <button class="btn sec peq" id="btnVerInf" type="button">Ver informes</button>
     </div>
+    <div id="cardBorr" class="card oculto" style="background:#e6f1fb;border-color:#85b7eb">
+      <b style="color:#0c447c">📝 Ingresos guardados sin terminar (en este celular)</b>
+      <div id="listaBorr"></div>
+    </div>
     <div id="avisoEnvio" class="card oculto" style="background:#eeedfe;border-color:#afa9ec">
       <b style="color:#3c3489">💬 <span id="avisoEnvioTxt"></span></b>
       <div class="nota" style="color:#3c3489" id="avisoEnvioDet"></div>
@@ -317,6 +321,8 @@
 
     <div id="errForm" class="err"></div>
     <button class="btn pri" id="btnGuardar">Guardar ingreso</button>
+    <button class="btn sec" id="btnBorrIng" type="button">💾 Guardar avance (terminar después)</button>
+    <div class="nota" id="borrIngTxt" style="text-align:center;color:var(--verde);font-weight:600"></div>
   </main>
 
   <main id="vistaLista" class="oculto">
@@ -463,6 +469,8 @@
     </div>
     <div id="errInf" class="err"></div>
     <button class="btn pri" id="btnEnviarInf">Enviar a revisión</button>
+    <button class="btn sec" id="btnAvanceInf" type="button">💾 Guardar avance (seguir después)</button>
+    <div class="nota" id="infGuardado" style="text-align:center;color:var(--verde);font-weight:600"></div>
     <div class="nota" style="text-align:center">El informe NO le llega al cliente: primero lo revisan Alexander o Tatiana.</div>
   </main>
 </div>
@@ -727,15 +735,23 @@ function mockAprob(n, hasta) { var out = []; mock.infs.forEach(function (x) { if
 function mockTec(o, tq, res, rej) {
   if (o.accion === 'login') return res({ ok: true, usuario: tq, rol: 'tecnico', waServicio: '3003479102' });
   if (o.accion === 'misOrdenes') return res({ ok: true, ordenes: mock.filas.filter(function (f) { return f.TECNICO === tq && f.ESTADO !== 'ANULADA' && f.ETAPA !== 'TURNO'; }).map(function (f) {
-    return { AVISO_SERVICIO: f.AVISO_SERVICIO, AVISO_SERVICIO_ENVIADO: f.AVISO_SERVICIO_ENVIADO, NUMERO: f.NUMERO, FECHA: f.FECHA, CLIENTE: f.NOMBRE, TIPO_VEHICULO: f.TIPO_VEHICULO, MODELO: f.MODELO, COLOR: f.COLOR, MOTOR_CHASIS: f.MOTOR_CHASIS, MOTIVO: f.MOTIVO, ESTADO_FISICO: f.ESTADO_FISICO, ELEMENTOS: f.ELEMENTOS, COTIZACION: f.COTIZACION, ITEMS: f.ITEMS, TOTAL: f.TOTAL, ABONO: f.ABONO, ETAPA: f.ETAPA, INFORME_DEVUELTO: f.INFORME_DEVUELTO || '', NUM_FOTOS_FIN: (f._fin || []).length,
-      informes: mock.infs.filter(function (x) { return x.NUMERO == f.NUMERO; }).map(function (x) { return { ID: x.ID, RONDA: x.RONDA, TIPO: x.TIPO, ESTADO: x.ESTADO, datos: x.final || x.original, respuesta: x.respuesta || null, numFotos: x.fotos.length }; }) };
+    return { AVISO_SERVICIO: f.AVISO_SERVICIO, AVISO_SERVICIO_ENVIADO: f.AVISO_SERVICIO_ENVIADO, NUMERO: f.NUMERO, FECHA: f.FECHA, CLIENTE: f.NOMBRE, TIPO_VEHICULO: f.TIPO_VEHICULO, MODELO: f.MODELO, COLOR: f.COLOR, MOTOR_CHASIS: f.MOTOR_CHASIS, MOTIVO: f.MOTIVO, ESTADO_FISICO: f.ESTADO_FISICO, ELEMENTOS: f.ELEMENTOS, COTIZACION: f.COTIZACION, ITEMS: f.ITEMS, TOTAL: f.TOTAL, ABONO: f.ABONO, ETAPA: f.ETAPA, INFORME_DEVUELTO: f.INFORME_DEVUELTO || '', INFORME_AVANCE: f.INFORME_AVANCE || '', NUM_FOTOS_FIN: (f._fin || []).length,
+      informes: mock.infs.filter(function (x) { return x.NUMERO == f.NUMERO; }).map(function (x) { return { ID: x.ID, RONDA: x.RONDA, TIPO: x.TIPO, ESTADO: x.ESTADO, FECHA_TECNICO: x.FECHA_TECNICO, datos: x.final || x.original, respuesta: x.respuesta || null, numFotos: x.fotos.length }; }) };
   }).reverse() });
   if (o.accion === 'guardarInforme') { var f = mockFila(o.numero); if (!f || f.TECNICO !== tq) return rej(new Error('No asignada')); if (f.ETAPA === 'INFORME POR REVISAR' || f.ETAPA === 'ESPERANDO CLIENTE') return rej(new Error('Ya tiene un informe pendiente'));
     var dv = mock.infs.filter(function (x) { return x.NUMERO == o.numero && x.ESTADO === 'DEVUELTO'; })[0];
+    if (dv && o.borrador) { dv.original = o.datos; dv.TIPO = o.tipo; f.INFORME_AVANCE = hoyISO() + ' 11:00'; return res({ ok: true, id: dv.ID, ronda: dv.RONDA, borrador: true }); }
+    var bo = mock.infs.filter(function (x) { return x.NUMERO == o.numero && x.ESTADO === 'BORRADOR'; })[0];
+    if (!dv && (bo || o.borrador)) {
+      if (!bo) { var rb = mock.infs.filter(function (x) { return x.NUMERO == o.numero; }).length + 1; bo = { ID: 'I' + o.numero + '-' + rb, NUMERO: f.NUMERO, RONDA: rb, TECNICO: tq, fotos: [] }; mock.infs.push(bo); }
+      bo.original = o.datos; bo.TIPO = o.tipo; bo.FECHA_TECNICO = hoyISO() + ' 11:00';
+      if (o.borrador) { bo.ESTADO = 'BORRADOR'; f.INFORME_AVANCE = bo.FECHA_TECNICO; return res({ ok: true, id: bo.ID, ronda: bo.RONDA, borrador: true }); }
+      bo.ESTADO = 'POR REVISAR'; f.INFORME_AVANCE = ''; f.ETAPA = 'INFORME POR REVISAR'; f.AVISO_SERVICIO = o.avisoServicio || ''; f.AVISO_SERVICIO_ENVIADO = ''; return res({ ok: true, id: bo.ID, ronda: bo.RONDA });
+    }
     if (dv) { dv.original = o.datos; dv.TIPO = o.tipo; dv.ESTADO = 'POR REVISAR'; dv.final = null; dv.FECHA_TECNICO = hoyISO() + ' 12:00'; f.INFORME_DEVUELTO = ''; f.ETAPA = 'INFORME POR REVISAR'; f.AVISO_SERVICIO = o.avisoServicio || ''; f.AVISO_SERVICIO_ENVIADO = ''; return res({ ok: true, id: dv.ID, ronda: dv.RONDA, corregido: true }); } var r = mock.infs.filter(function (x) { return x.NUMERO == o.numero; }).length + 1; var id = 'I' + o.numero + '-' + r; mock.infs.push({ ID: id, NUMERO: f.NUMERO, RONDA: r, TIPO: o.tipo, TECNICO: tq, FECHA_TECNICO: hoyISO() + ' 09:30', original: o.datos, ESTADO: 'POR REVISAR', fotos: [] }); f.ETAPA = 'INFORME POR REVISAR'; f.AVISO_SERVICIO = o.avisoServicio || ''; f.AVISO_SERVICIO_ENVIADO = ''; return res({ ok: true, id: id, ronda: r }); }
   if (o.accion === 'subir' && o.esFin) { var fq = mockFila(o.numero); (fq._fin = fq._fin || []).push({ nombre: o.nombre, mime: o.mime, b64: o.b64 }); fq.FOTOS_FIN = JSON.stringify(fq._fin.map(function (x, i) { return 'id' + i; })); return res({ ok: true }); }
   if (o.accion === 'subir' && o.informe && !o.esRespuesta) { mockInf(o.informe).fotos.push({ nombre: o.nombre, mime: o.mime, b64: o.b64 }); return res({ ok: true }); }
-  if (o.accion === 'terminar') { var ft = mockFila(o.numero); if (ft.INFORME_DEVUELTO) return rej(new Error('Tiene un informe devuelto: primero corríjalo.')); if (ft.ETAPA !== 'APROBADO' && ft.ETAPA !== 'NO APROBADO') return rej(new Error('Sin respuesta del cliente')); ft.ETAPA = 'TERMINADO'; ft.AVISO_SERVICIO = o.avisoServicio || ''; ft.AVISO_SERVICIO_ENVIADO = ''; return res({ ok: true }); }
+  if (o.accion === 'terminar') { var ft = mockFila(o.numero); if (ft.INFORME_DEVUELTO) return rej(new Error('Tiene un informe devuelto: primero corríjalo.')); if (mock.infs.some(function (x) { return x.NUMERO == o.numero && x.ESTADO === 'BORRADOR'; })) return rej(new Error('Tiene un hallazgo guardado a medias.')); if (ft.ETAPA !== 'APROBADO' && ft.ETAPA !== 'NO APROBADO') return rej(new Error('Sin respuesta del cliente')); ft.ETAPA = 'TERMINADO'; ft.AVISO_SERVICIO = o.avisoServicio || ''; ft.AVISO_SERVICIO_ENVIADO = ''; return res({ ok: true }); }
   if (o.accion === 'avisoServicioEnviado') { mockFila(o.numero).AVISO_SERVICIO_ENVIADO = 'hoy'; return res({ ok: true }); }
   return rej(new Error('Esta opción es solo para el coordinador.'));
 }
@@ -1022,6 +1038,8 @@ function procesar() {
   cadena.then(function () {
     progreso(100, 'Listo');
     S.ultima = P; S.proc = null;
+    var bid = S.borrId; S.borrId = null; $('borrIngTxt').textContent = '';
+    borrBorrar(bid).then(pintarBorradores);
     setTimeout(function () { mostrar('mProceso', false); abrirListo(P); limpiarForm(); }, 300);
   }).catch(function (e) {
     $('procErr').textContent = (P.numero ? 'La orden ' + P.numero + ' quedó guardada, pero falló: ' : 'No se pudo guardar: ') + e.message + '. Revise la conexión y reintente.';
@@ -1210,7 +1228,7 @@ $('btnDescargarPdf').onclick = function () { descargar(S.ultima.pdf); };
 $('btnNuevo').onclick = function () { mostrar('mListo', false); window.scrollTo(0, 0); revisarFaltantes(); };
 
 function limpiarForm() {
-  S.recibir = null;
+  S.recibir = null; S.borrId = null; $('borrIngTxt').textContent = '';
   $('segTurno').querySelector('[data-v=taller]').click();
   ['f_nombre', 'f_telefono', 'f_cedula', 'f_email', 'f_tipo', 'f_modelo', 'f_color', 'f_motivo', 'f_estado', 'f_elementos', 'f_cotizacion', 'f_total', 'f_abono', 'f_medio', 'f_turnoFecha', 'f_turnoHora', 'f_tecnico', 'f_motor']
     .forEach(function (id) { $(id).value = ''; });
@@ -1219,6 +1237,79 @@ function limpiarForm() {
   $('chipsElem').querySelectorAll('.chip').forEach(function (c) { c.classList.remove('on'); });
   S.archivos = []; pintarFotos(); recalcular(false); aplicarModo();
   api({ accion: 'login' }).then(function (r) { S.siguiente = r.siguiente; if (!S.recibir) $('lblSiguiente').textContent = r.siguiente; }).catch(function () {});
+}
+
+/* ---------- ingreso a medias: se guarda EN ESTE CELULAR (con fotos y videos) hasta tocar Guardar ingreso ---------- */
+var CAMPOS_ING = ['f_nombre', 'f_telefono', 'f_cedula', 'f_email', 'f_tipo', 'f_modelo', 'f_color', 'f_motivo', 'f_estado', 'f_elementos', 'f_cotizacion', 'f_total', 'f_abono', 'f_medio', 'f_turnoFecha', 'f_turnoHora', 'f_tecnico', 'f_motor'];
+function idbBorr() {
+  return new Promise(function (res, rej) {
+    if (!window.indexedDB) return rej(new Error('Este navegador no permite guardar borradores.'));
+    var r = indexedDB.open('sea_borradores', 1);
+    r.onupgradeneeded = function () { r.result.createObjectStore('b', { keyPath: 'id' }); };
+    r.onsuccess = function () { res(r.result); }; r.onerror = function () { rej(r.error || new Error('No se pudo abrir el almacenamiento')); };
+  });
+}
+function borrOp(modo, fn) {
+  return idbBorr().then(function (db) { return new Promise(function (res, rej) {
+    var tx = db.transaction('b', modo), st = tx.objectStore('b'), out = fn(st);
+    tx.oncomplete = function () { res(out && out.result !== undefined ? out.result : undefined); }; tx.onerror = function () { rej(tx.error); };
+  }); });
+}
+function borrLista() { return borrOp('readonly', function (st) { return st.getAll(); }).then(function (l) { return (l || []).filter(function (b) { return b.usuario === S.usuario; }).sort(function (a, b) { return b.fecha - a.fecha; }); }).catch(function () { return []; }); }
+function borrBorrar(id) { return id ? borrOp('readwrite', function (st) { st.delete(id); }).catch(function () {}) : Promise.resolve(); }
+function capturarIngreso() {
+  var b = { id: S.borrId || ('b' + Date.now()), usuario: S.usuario, fecha: Date.now(), campos: {}, turno: S.turno, canal: S.canal, trato: S.trato,
+    chips: [].map.call($('chipsElem').querySelectorAll('.chip.on'), function (c) { return c.textContent; }),
+    items: [].map.call($('items').querySelectorAll('.item'), function (r) { return { con: r.querySelector('.i_con').value, can: r.querySelector('.i_can').value, val: r.querySelector('.i_val').value }; }),
+    archivos: S.archivos.map(function (a) { return { name: a.file.name, type: a.file.type, blob: a.file }; }),
+    recibir: S.recibir || null };
+  CAMPOS_ING.forEach(function (id) { b.campos[id] = $(id).value; });
+  return b;
+}
+$('btnBorrIng').onclick = function () {
+  var b = capturarIngreso();
+  if (!b.campos.f_nombre.trim() && !b.campos.f_telefono.trim() && !b.archivos.length) { $('errForm').textContent = 'No hay nada para guardar todavía.'; return; }
+  var btn = this; btn.disabled = true; $('errForm').textContent = '';
+  borrOp('readwrite', function (st) { st.put(b); }).then(function () {
+    S.borrId = b.id; var h = new Date();
+    $('borrIngTxt').textContent = '✓ Avance guardado en este celular a las ' + h.getHours() + ':' + String(h.getMinutes()).padStart(2, '0') + (b.archivos.length ? ' (con ' + b.archivos.length + ' foto(s)/video(s))' : '') + '. Lo encuentra arriba en “Ingresos guardados sin terminar”.';
+    pintarBorradores();
+  }).catch(function (e) { $('errForm').textContent = 'No se pudo guardar el avance: ' + e.message; }).then(function () { btn.disabled = false; });
+};
+function pintarBorradores() {
+  borrLista().then(function (l) {
+    var c = $('listaBorr'); c.innerHTML = '';
+    l.forEach(function (b) {
+      var d = document.createElement('div'); d.className = 'orden';
+      var fh = new Date(b.fecha), cuando = fh.toLocaleDateString('es-CO', { day: 'numeric', month: 'short' }) + ' ' + fh.getHours() + ':' + String(fh.getMinutes()).padStart(2, '0');
+      d.innerHTML = '<div class="info"><b>' + esc(b.campos.f_nombre || '(sin nombre)') + '</b> · ' + esc([b.campos.f_tipo, b.campos.f_modelo].filter(Boolean).join(' ') || 'vehículo sin datos') +
+        '<div class="nota">Guardado ' + cuando + (b.archivos.length ? ' · ' + b.archivos.length + ' foto(s)/video(s)' : '') + (b.recibir ? ' · llegada del turno ' + b.recibir.NUMERO : '') + (b.id === S.borrId ? ' · <b>abierto ahora</b>' : '') + '</div></div><div class="acc"></div>';
+      boton(d.querySelector('.acc'), '✏️ Continuar', 'pri', function () { abrirBorrador(b); });
+      boton(d.querySelector('.acc'), '🗑️ Borrar', 'sec', function () { if (confirm('¿Borrar este ingreso guardado? Se pierde lo que tenía.')) borrBorrar(b.id).then(function () { if (S.borrId === b.id) { S.borrId = null; $('borrIngTxt').textContent = ''; } pintarBorradores(); }); });
+      c.appendChild(d);
+    });
+    mostrar('cardBorr', l.length > 0);
+  });
+}
+function abrirBorrador(b) {
+  limpiarForm();
+  if (b.recibir) { recibirTurno(b.recibir); }
+  S.borrId = b.id;
+  $('segTurno').querySelector('[data-v=' + (b.turno === 'turno' ? 'turno' : 'taller') + ']').click();
+  if (b.canal && $('segCanal').querySelector('[data-v=' + b.canal + ']')) $('segCanal').querySelector('[data-v=' + b.canal + ']').click();
+  if (b.trato && $('segTrato').querySelector('[data-v=' + b.trato + ']')) $('segTrato').querySelector('[data-v=' + b.trato + ']').click();
+  CAMPOS_ING.forEach(function (id) {
+    var v = b.campos[id]; if (v === undefined) return;
+    if (id === 'f_tecnico' && v && ![].some.call($(id).options, function (x) { return x.value === v; })) $(id).insertAdjacentHTML('beforeend', '<option>' + esc(v) + '</option>');
+    $(id).value = v;
+  });
+  $('chipsElem').querySelectorAll('.chip').forEach(function (ch) { ch.classList.toggle('on', (b.chips || []).indexOf(ch.textContent) >= 0); });
+  $('items').innerHTML = '';
+  (b.items || []).forEach(function (it) { agregarItem(); var r = $('items').lastChild; r.querySelector('.i_con').value = it.con; r.querySelector('.i_can').value = it.can; r.querySelector('.i_val').value = it.val; });
+  agregarMedios((b.archivos || []).map(function (a) { return new File([a.blob], a.name || 'archivo', { type: a.type || a.blob.type }); }), S.archivos);
+  pintarFotos(); recalcular(false); aplicarModo();
+  $('borrIngTxt').textContent = '📝 Continuando un ingreso guardado. Al tocar Guardar ingreso se borra de “guardados”.';
+  window.scrollTo(0, 0); pintarBorradores();
 }
 
 /* ---------- recibir el vehículo de un turno ---------- */
@@ -1269,6 +1360,7 @@ function pintarAviso(f) {
   mostrar('avisoAcepto', f.length > 0);
 }
 function revisarFaltantes() {   // avisos al abrir la app: técnico sin avisar, entregas, turnos
+  pintarBorradores();
   api({ accion: 'listar', cantidad: 300 }).then(function (r) {
     pintarAviso(r.ordenes.filter(faltaAcepto)); pintarTurnos(r.ordenes); pintarAvisosCoord(r.ordenes);
   }).catch(function () {});
@@ -1328,7 +1420,7 @@ function cargarLista() {
         $('lista').appendChild(d);
         return;
       }
-      d.innerHTML = '<div class="num">' + o.NUMERO + '</div><div class="info"><div>' + esc(o.NOMBRE) + (o.ACEPTACION ? '<span class="badge">' + (esPapel(o) ? '✓ firmó' : '✓ aceptó') + '</span>' : '') + badgeEtapa(o.ESTADO === 'ANULADA' ? '' : o.ETAPA) + (sinAvisoTec(o) ? '<span class="badge" style="background:#fdeee6;color:#712b13">🔔 falta avisar al técnico</span>' : '') + (sinEnvio(o) ? '<span class="badge" style="background:#eeedfe;color:#3c3489">💬 sin enviar al cliente</span>' : '') + (o.INFORME_DEVUELTO ? '<span class="badge" style="background:#fde7e7;color:#a32d2d">↩️ informe devuelto al técnico</span>' : '') + (o.IMPRESA ? '<span class="badge">✓ impresa</span>' : '') + (o.ESTADO === 'ANULADA' ? '<span class="badge">anulada</span>' : '') + '</div><div>' + esc(o.FECHA_HORA) + ' · ' + esc(o.TIPO_VEHICULO) + ' · ' + esc(o.RECIBE) + ' · 👨‍🔧 ' + esc(o.TECNICO || 'sin técnico') + infoEntrega(o) + '</div></div>' +
+      d.innerHTML = '<div class="num">' + o.NUMERO + '</div><div class="info"><div>' + esc(o.NOMBRE) + (o.ACEPTACION ? '<span class="badge">' + (esPapel(o) ? '✓ firmó' : '✓ aceptó') + '</span>' : '') + badgeEtapa(o.ESTADO === 'ANULADA' ? '' : o.ETAPA) + (sinAvisoTec(o) ? '<span class="badge" style="background:#fdeee6;color:#712b13">🔔 falta avisar al técnico</span>' : '') + (sinEnvio(o) ? '<span class="badge" style="background:#eeedfe;color:#3c3489">💬 sin enviar al cliente</span>' : '') + (o.INFORME_DEVUELTO ? '<span class="badge" style="background:#fde7e7;color:#a32d2d">↩️ informe devuelto al técnico</span>' : '') + (o.INFORME_AVANCE && !o.INFORME_DEVUELTO && (o.ETAPA === 'EN TALLER' || o.ETAPA === 'APROBADO') ? '<span class="badge" style="background:#e6f1fb;color:#0c447c">📝 informe en progreso</span>' : '') + (o.IMPRESA ? '<span class="badge">✓ impresa</span>' : '') + (o.ESTADO === 'ANULADA' ? '<span class="badge">anulada</span>' : '') + '</div><div>' + esc(o.FECHA_HORA) + ' · ' + esc(o.TIPO_VEHICULO) + ' · ' + esc(o.RECIBE) + ' · 👨‍🔧 ' + esc(o.TECNICO || 'sin técnico') + infoEntrega(o) + '</div></div>' +
         '<div class="acc">' + (o.PDF_URL ? '<a href="' + esc(o.PDF_URL) + '" target="_blank">PDF</a>' : '') + (o.CARPETA_URL ? '<a href="' + esc(o.CARPETA_URL) + '" target="_blank">Fotos</a>' : '') +
         '<button data-a="acp">' + (o.ACEPTACION ? 'Quitar aceptación' : (esPapel(o) ? '✓ Firmó' : '✓ Aceptó')) + '</button>' +
         ((o.ETAPA === 'APROBADO' || o.ETAPA === 'NO APROBADO') && o.TECNICO && o.ESTADO !== 'ANULADA' ? '<button data-a="avr">📲 Avisar respuesta al técnico</button>' : '') +
@@ -1585,6 +1677,7 @@ function cargarMis() {
         '<div class="nota">Cliente: ' + esc(titulo(o.CLIENTE)) + ' · Ingresó ' + esc(o.FECHA) + (o.MOTOR_CHASIS ? ' · N° motor ' + esc(o.MOTOR_CHASIS) : '') + '</div>' +
         '<div style="font-size:14px;margin-top:6px"><b>Motivo:</b> ' + esc(o.MOTIVO) + '</div>' +
         htmlCotizIngreso(o) +
+        ((o.informes || []).some(function (i) { return i.ESTADO === 'BORRADOR'; }) && !o.INFORME_DEVUELTO ? '<div class="estado-box" style="background:#e6f1fb;color:#0c447c;border:2px solid #85b7eb"><b>📝 Informe en progreso</b> · guardado ' + esc(String(((o.informes || []).filter(function (i) { return i.ESTADO === 'BORRADOR'; })[0] || {}).FECHA_TECNICO || '').replace(/^\'/, '')) + '<br><span style="font-size:13px">Todavía NO se ha enviado a revisión. Toque ✏️ Continuar para terminarlo.</span></div>' : '') +
         (o.INFORME_DEVUELTO ? '<div class="estado-box" style="background:#fde7e7;color:#a32d2d;border:2px solid #f09595"><b>↩️ Informe devuelto para corregir</b><br>' + esc(String(o.INFORME_DEVUELTO).replace(/\s*\([^()]*\)\s*$/, '')) + '<br><span style="font-size:13px">Toque ✏️ Corregir informe: le aparece lo que ya había llenado.</span></div>'
           : '<div class="estado-box" style="background:' + x[1] + ';color:' + x[2] + '">' + esc(x[3]) + '</div>') +
         itemsTec(o) +
@@ -1595,6 +1688,9 @@ function cargarMis() {
       if (o.AVISO_SERVICIO && !o.AVISO_SERVICIO_ENVIADO)
         boton(acc, '📲 Avisar a Alexander (servicio técnico) por WhatsApp', 'wa', function () { enviarAvisoServicio(o.NUMERO, o.AVISO_SERVICIO); });
       var infDev = (o.informes || []).filter(function (i) { return i.ESTADO === 'DEVUELTO'; })[0];
+      var infBor = (o.informes || []).filter(function (i) { return i.ESTADO === 'BORRADOR'; })[0];
+      if (infBor && !o.INFORME_DEVUELTO) { var hb = !!(infBor.datos && infBor.datos.hallazgo);
+        boton(acc, '✏️ Continuar ' + (hb ? 'hallazgo' : 'informe'), 'pri', function () { abrirFormInf(o, hb, infBor); }); c.appendChild(d); return; }
       if (o.INFORME_DEVUELTO && infDev) { boton(acc, '✏️ Corregir informe', 'pri', function () { abrirFormInf(o, !!(infDev.datos && infDev.datos.hallazgo), infDev); }); c.appendChild(d); return; }
       if (o.ETAPA === 'EN TALLER') boton(acc, '📝 Hacer informe', 'pri', function () { abrirFormInf(o, false); });
       if (o.ETAPA === 'APROBADO') boton(acc, '➕ Hallazgo nuevo (requiere autorización)', 'sec', function () { abrirFormInf(o, true); });
@@ -1609,7 +1705,7 @@ function cargarMis() {
 function itemsTec(o) {
   return (o.informes || []).map(function (inf) {
     var it = (inf.datos && inf.datos.items) || [];
-    var cab = '<div style="margin-top:10px;font-size:14px"><b>Informe ' + inf.RONDA + (inf.datos && inf.datos.hallazgo ? ' (hallazgo nuevo)' : '') + '</b>' + (inf.ESTADO === 'DEVUELTO' ? ' <span style="color:#a32d2d">(devuelto para corregir)</span>' : '');
+    var cab = '<div style="margin-top:10px;font-size:14px"><b>Informe ' + inf.RONDA + (inf.datos && inf.datos.hallazgo ? ' (hallazgo nuevo)' : '') + '</b>' + (inf.ESTADO === 'DEVUELTO' ? ' <span style="color:#a32d2d">(devuelto para corregir)</span>' : inf.ESTADO === 'BORRADOR' ? ' <span style="color:#0c447c">(en progreso, sin enviar)</span>' : '');
     if (!it.length) return cab + '<div class="nota">Sin ítems por autorizar.</div></div>';
     return cab + it.map(function (i, k) {
       var r = inf.respuesta ? inf.respuesta[k] : null;
@@ -1623,8 +1719,11 @@ function abrirFormInf(o, hallazgo, prev) {   // prev = informe devuelto: se abre
   var soloServ = hallazgo || esRepuesto(o.TIPO_VEHICULO);   // repuestos (batería, cargador…): sin componentes, solo informe de servicio
   var pd = prev ? JSON.parse(JSON.stringify(prev.datos || {})) : null;
   S.inf = { orden: o, hallazgo: hallazgo, tipo: soloServ ? 'servicio' : ((pd && pd.tipo) || 'mantenimiento'), comps: compsCompletos(pd ? pd.componentes : []),
-    items: itemsIniciales(o, hallazgo, prev), fotos: [], proc: null, corrige: !!prev, fotosPrev: prev ? Number(prev.numFotos || 0) : 0 };
-  $('infTitulo').textContent = (prev ? 'Corregir ' + (hallazgo ? 'hallazgo' : 'informe') + ' · Orden ' : (hallazgo ? 'Hallazgo nuevo · Orden ' : 'Informe · Orden ')) + o.NUMERO;
+    items: itemsIniciales(o, hallazgo, prev), fotos: [], proc: null, corrige: !!prev && prev.ESTADO === 'DEVUELTO', fotosPrev: prev ? Number(prev.numFotos || 0) : 0,
+    borId: prev ? prev.ID : null, dirty: false };
+  var enProg = !!prev && prev.ESTADO === 'BORRADOR';
+  $('infTitulo').textContent = (enProg ? 'Continuar ' + (hallazgo ? 'hallazgo' : 'informe') + ' · Orden ' : prev ? 'Corregir ' + (hallazgo ? 'hallazgo' : 'informe') + ' · Orden ' : (hallazgo ? 'Hallazgo nuevo · Orden ' : 'Informe · Orden ')) + o.NUMERO;
+  $('infGuardado').textContent = enProg ? '📝 Viene de un avance guardado el ' + String(prev.FECHA_TECNICO || '').replace(/^'/, '') + (S.inf.fotosPrev ? ' · ' + S.inf.fotosPrev + ' foto(s)/video(s) ya guardados' : '') : '';
   $('infSub').textContent = [o.TIPO_VEHICULO, o.MODELO, o.COLOR].filter(Boolean).join(' ') + ' · Motivo: ' + o.MOTIVO;
   var ci = cotizIngreso(o);
   $('infPrelim').innerHTML = ci.hay && !hallazgo ? (itemsPrelim(o).length && S.inf.items.length ? '💰 Los ítems de la cotización preliminar del ingreso ya están cargados abajo. Revise, corrija valores y complete el código de cada uno.' : '💰 Cotización preliminar del ingreso: ' + esc([ci.texto, ci.total ? 'total ' + fmt(ci.total) : ''].filter(Boolean).join(' · '))) + (ci.abono ? '<br><b>💵 El cliente abonó ' + fmt(ci.abono) + '.</b>' : '') : '';
@@ -1632,8 +1731,8 @@ function abrirFormInf(o, hallazgo, prev) {   // prev = informe devuelto: se abre
   mostrar('boxTipoInf', !soloServ);
   $('segTipoInf').querySelectorAll('button').forEach(function (b) { b.classList.toggle('on', b.dataset.v === S.inf.tipo); });
   $('infDesc').value = pd ? [pd.descripcion, pd.observaciones].filter(Boolean).join('\n\n') : ''; $('errInf').textContent = '';
-  mostrar('infDevBox', !!prev);
-  if (prev) $('infDevBox').innerHTML = '<b>↩️ Qué debe corregir:</b> ' + esc(String(o.INFORME_DEVUELTO || '').replace(/\s*\([^()]*\)\s*$/, '')) + (S.inf.fotosPrev ? '<br><span style="font-size:13px">Las ' + S.inf.fotosPrev + ' foto(s) que ya envió se conservan. Agregue solo fotos nuevas si hacen falta.</span>' : '');
+  mostrar('infDevBox', S.inf.corrige);
+  if (S.inf.corrige) $('infDevBox').innerHTML = '<b>↩️ Qué debe corregir:</b> ' + esc(String(o.INFORME_DEVUELTO || '').replace(/\s*\([^()]*\)\s*$/, '')) + (S.inf.fotosPrev ? '<br><span style="font-size:13px">Las ' + S.inf.fotosPrev + ' foto(s) que ya envió se conservan. Agregue solo fotos nuevas si hacen falta.</span>' : '');
   pintarComponentes($('infComps'), S.inf.comps);
   pintarItems($('infItems'), S.inf.items, totalInf); totalInf();
   pintarFotosInf(); aplicarTipoInf(); verTec('form');
@@ -1683,7 +1782,48 @@ function pintarFotosInf() {
     c.appendChild(d);
   });
 }
-$('btnVolverInf').onclick = function () { if (confirm(S.inf.corrige ? '¿Salir sin enviar la corrección? Se pierden los cambios de ahora (lo que ya había enviado se conserva).' : '¿Salir sin enviar el informe? Se pierde lo escrito.')) verTec('mis'); };
+$('btnVolverInf').onclick = function () {
+  if (!S.inf.dirty) { verTec('mis'); cargarMis(); return; }
+  if (confirm('¿Guardar el avance antes de salir?\n\nAceptar: guarda lo que lleva y sale (lo puede continuar después).\nCancelar: no guarda.')) return guardarAvance(true);
+  if (confirm('¿Salir SIN guardar? Se pierde lo que haya hecho desde la última vez que guardó.')) { verTec('mis'); cargarMis(); }
+};
+/* informe a medias: se guarda en el servidor (con fotos) sin exigir que esté completo y sin avisarle a nadie */
+['input', 'change'].forEach(function (ev) { $('vistaFormInf').addEventListener(ev, function () { if (S.inf) S.inf.dirty = true; }); });
+$('vistaFormInf').addEventListener('click', function (e) { if (S.inf && e.target.closest && e.target.closest('.est3 button, #segTipoInf button, #btnInfItem, .itc button, .foto button')) S.inf.dirty = true; });
+$('btnAvanceInf').onclick = function () { guardarAvance(false); };
+function guardarAvance(salir) {
+  var I = S.inf;
+  var items = (I.items || []).filter(function (i) { return i && (String(i.codigo || '').trim() || String(i.concepto || '').trim() || Number(i.valor)); })
+    .map(function (i) { return { codigo: i.codigo || '', concepto: i.concepto || '', cantidad: i.cantidad || 1, valor: i.valor || '' }; });
+  var datos = { tipo: I.tipo, componentes: I.tipo === 'mantenimiento' ? limpiarComps(I.comps) : [], descripcion: $('infDesc').value.trim(), observaciones: '', items: items, hallazgo: !!I.hallazgo };
+  $('btnReintentar').onclick = function () { guardarAvance(salir); };
+  mostrar('mProceso', true); mostrar('btnReintentar', false); $('procErr').textContent = ''; $('procTitulo').textContent = 'Orden ' + I.orden.NUMERO + ' · guardando avance';
+  progreso(15, 'Guardando avance…');
+  api({ accion: 'guardarInforme', borrador: true, numero: I.orden.NUMERO, tipo: I.tipo, datos: datos }).then(function (r) {
+    I.borId = r.id;
+    var pend = I.fotos.filter(function (a) { return !a.subido; });
+    return Promise.all(pend.map(function (a) { return a.listo; })).then(function (files) {
+      var seq = Promise.resolve();
+      files.forEach(function (f, k) {
+        seq = seq.then(function () {
+          progreso(30 + Math.round(65 * k / Math.max(1, files.length)), 'Subiendo ' + (esVideoF(f) ? 'video' : 'foto') + ' ' + (k + 1) + ' de ' + files.length + '…');
+          I.fotosPrev = (I.fotosPrev || 0) + 1;
+          var num = I.fotosPrev;
+          return b64(f).then(function (x) { return api({ accion: 'subir', numero: I.orden.NUMERO, informe: r.id, nombre: nombreMedio(I.orden.NUMERO + '_{T}_informe_' + (String(r.id).split('-')[1] || '1') + '_', f, num), mime: mimeMedio(f), b64: x }); })
+            .then(function () { pend[k].subido = true; }, function (e) { I.fotosPrev--; throw e; });
+        });
+      });
+      return seq;
+    });
+  }).then(function () {
+    I.fotos = I.fotos.filter(function (a) { return !a.subido; }); pintarFotosInf();
+    I.dirty = false;
+    var h = new Date();
+    $('infGuardado').textContent = '✓ Avance guardado a las ' + h.getHours() + ':' + String(h.getMinutes()).padStart(2, '0') + (I.fotosPrev ? ' · ' + I.fotosPrev + ' foto(s)/video(s) guardados' : '') + '. Puede salir y continuar después.';
+    progreso(100, 'Avance guardado');
+    setTimeout(function () { mostrar('mProceso', false); if (salir) { verTec('mis'); cargarMis(); } }, 400);
+  }).catch(function (e) { $('procErr').textContent = 'No se pudo guardar el avance: ' + e.message + '. Revise la conexión y reintente (lo que ya subió no se repite).'; mostrar('btnReintentar', true); });
+}
 $('btnEnviarInf').onclick = function () {
   var I = S.inf, items = limpiarItems(I.items), comps = I.tipo === 'mantenimiento' ? limpiarComps(I.comps) : [];
   var desc = $('infDesc').value.trim();
@@ -1719,6 +1859,7 @@ function enviarInfTec() {
     });
   });
   cadena.then(function () {
+    I.dirty = false;
     progreso(100, 'Informe enviado a revisión');
     var o = I.orden;
     setTimeout(function () {
@@ -2259,6 +2400,7 @@ function cargarTablero() {
     act.filter(function (o) { return o.ETAPA === 'TERMINADO'; }).forEach(function (o) { al.push('📦 <b>' + o.NUMERO + '</b> ' + esc(o.NOMBRE) + ': terminada ' + txtDias(diasDesde(o.ETAPA_FECHA)) + ', falta el aviso de entrega'); });
     act.filter(function (o) { return o.ETAPA === 'ESPERANDO CLIENTE' && diasDesde(o.ETAPA_FECHA) >= 2; }).forEach(function (o) { al.push('🟡 <b>' + o.NUMERO + '</b> ' + esc(o.NOMBRE) + ': el cliente no responde el informe desde ' + txtDias(diasDesde(o.ETAPA_FECHA))); });
     act.filter(function (o) { return o.ETAPA === 'INFORME POR REVISAR'; }).forEach(function (o) { al.push('📝 <b>' + o.NUMERO + '</b> ' + esc(o.NOMBRE) + ': informe por revisar'); });
+    act.filter(function (o) { return o.INFORME_AVANCE && !o.INFORME_DEVUELTO && (o.ETAPA === 'EN TALLER' || o.ETAPA === 'APROBADO'); }).forEach(function (o) { al.push('📝 <b>' + o.NUMERO + '</b> ' + esc(o.NOMBRE) + ': informe en progreso de ' + esc(titulo(o.TECNICO)) + ' (guardado ' + esc(String(o.INFORME_AVANCE).replace(/^\'/, '')) + ')'); });
     act.filter(function (o) { return o.INFORME_DEVUELTO; }).forEach(function (o) { al.push('↩️ <b>' + o.NUMERO + '</b> ' + esc(o.NOMBRE) + ': informe devuelto a ' + esc(titulo(o.TECNICO)) + ', sin corregir'); });
     act.filter(sinEnvio).forEach(function (o) { al.push('💬 <b>' + o.NUMERO + '</b> ' + esc(o.NOMBRE) + ': ingreso sin enviar al cliente'); });
     act.filter(sinAvisoTec).forEach(function (o) { al.push('🔔 <b>' + o.NUMERO + '</b> ' + esc(o.NOMBRE) + ': respuesta del cliente sin avisar al técnico (' + esc(titulo(o.TECNICO)) + ')'); });
