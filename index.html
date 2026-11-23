@@ -267,10 +267,13 @@
     <div class="card" id="cardFotos">
       <h3>Fotos y videos del ingreso</h3>
       <div class="fila">
-        <button class="btn sec" id="btnCamara" type="button">📷 Tomar foto</button>
-        <button class="btn sec" id="btnGaleria" type="button">🖼️ Galería / video</button>
+        <button class="btn sec" id="btnCamara" type="button">📷 Foto</button>
+        <button class="btn sec" id="btnVideo" type="button">🎥 Video</button>
+        <button class="btn sec" id="btnGaleria" type="button">🖼️ Galería</button>
       </div>
+      <div class="nota">Si la cámara desde la app se demora, tome las fotos o videos con la cámara normal del celular y súbalos con 🖼️ Galería (puede elegir varios a la vez). Videos de máximo 35 MB (más o menos 1 minuto).</div>
       <input id="inCamara" type="file" accept="image/*" capture="environment" class="oculto">
+      <input id="inVideo" type="file" accept="video/*" capture="environment" class="oculto">
       <input id="inGaleria" type="file" accept="image/*,video/*" multiple class="oculto">
       <input id="inAcepto" type="file" accept="image/*" class="oculto">
       <input id="inFirmada" type="file" accept="image/*" capture="environment" class="oculto">
@@ -446,13 +449,16 @@
       <div class="nota oculto" id="infAbono" style="text-align:right"></div>
     </div>
     <div class="card">
-      <h3>Fotos</h3>
+      <h3>Fotos y videos</h3>
       <div class="fila">
-        <button class="btn sec" id="btnInfCam" type="button">📷 Tomar foto</button>
+        <button class="btn sec" id="btnInfCam" type="button">📷 Foto</button>
+        <button class="btn sec" id="btnInfVid" type="button">🎥 Video</button>
         <button class="btn sec" id="btnInfGal" type="button">🖼️ Galería</button>
       </div>
+      <div class="nota">Si la cámara desde la app se demora, tómelas con la cámara normal del celular y súbalas con 🖼️ Galería. Videos de máximo 35 MB (más o menos 1 minuto).</div>
       <input id="inInfCam" type="file" accept="image/*" capture="environment" class="oculto">
-      <input id="inInfGal" type="file" accept="image/*" multiple class="oculto">
+      <input id="inInfVid" type="file" accept="video/*" capture="environment" class="oculto">
+      <input id="inInfGal" type="file" accept="image/*,video/*" multiple class="oculto">
       <div class="fotos" id="infFotos"></div>
     </div>
     <div id="errInf" class="err"></div>
@@ -555,11 +561,13 @@
 <div id="mFin" class="modal oculto"><div class="card">
   <h3 id="fnTitulo">Terminar orden</h3>
   <div class="nota" id="fnSub"></div>
-  <label style="margin-top:12px">📸 Fotos de cómo quedó el vehículo <span id="fnObl"></span></label>
+  <label style="margin-top:12px">📸 Fotos y videos de cómo quedó el vehículo <span id="fnObl"></span></label>
   <div class="nota" id="fnAyuda"></div>
-  <div class="fila"><button class="btn sec" id="btnFnCam" type="button">📷 Tomar foto</button><button class="btn sec" id="btnFnGal" type="button">🖼️ Galería</button></div>
+  <div class="fila"><button class="btn sec" id="btnFnCam" type="button">📷 Foto</button><button class="btn sec" id="btnFnVid" type="button">🎥 Video</button><button class="btn sec" id="btnFnGal" type="button">🖼️ Galería</button></div>
+  <div class="nota">Si la cámara desde la app se demora, use la cámara normal del celular y súbalas con 🖼️ Galería.</div>
   <input id="inFnCam" type="file" accept="image/*" capture="environment" class="oculto">
-  <input id="inFnGal" type="file" accept="image/*" multiple class="oculto">
+  <input id="inFnVid" type="file" accept="video/*" capture="environment" class="oculto">
+  <input id="inFnGal" type="file" accept="image/*,video/*" multiple class="oculto">
   <div class="fotos" id="fnFotos"></div>
   <div class="err" id="errFn"></div>
   <button class="btn pri" id="btnFnOk" type="button">✅ Marcar terminada</button>
@@ -719,7 +727,7 @@ function mockAprob(n, hasta) { var out = []; mock.infs.forEach(function (x) { if
 function mockTec(o, tq, res, rej) {
   if (o.accion === 'login') return res({ ok: true, usuario: tq, rol: 'tecnico', waServicio: '3003479102' });
   if (o.accion === 'misOrdenes') return res({ ok: true, ordenes: mock.filas.filter(function (f) { return f.TECNICO === tq && f.ESTADO !== 'ANULADA' && f.ETAPA !== 'TURNO'; }).map(function (f) {
-    return { AVISO_SERVICIO: f.AVISO_SERVICIO, AVISO_SERVICIO_ENVIADO: f.AVISO_SERVICIO_ENVIADO, NUMERO: f.NUMERO, FECHA: f.FECHA, CLIENTE: f.NOMBRE, TIPO_VEHICULO: f.TIPO_VEHICULO, MODELO: f.MODELO, COLOR: f.COLOR, MOTOR_CHASIS: f.MOTOR_CHASIS, MOTIVO: f.MOTIVO, ESTADO_FISICO: f.ESTADO_FISICO, ELEMENTOS: f.ELEMENTOS, COTIZACION: f.COTIZACION, ITEMS: f.ITEMS, TOTAL: f.TOTAL, ABONO: f.ABONO, ETAPA: f.ETAPA, INFORME_DEVUELTO: f.INFORME_DEVUELTO || '',
+    return { AVISO_SERVICIO: f.AVISO_SERVICIO, AVISO_SERVICIO_ENVIADO: f.AVISO_SERVICIO_ENVIADO, NUMERO: f.NUMERO, FECHA: f.FECHA, CLIENTE: f.NOMBRE, TIPO_VEHICULO: f.TIPO_VEHICULO, MODELO: f.MODELO, COLOR: f.COLOR, MOTOR_CHASIS: f.MOTOR_CHASIS, MOTIVO: f.MOTIVO, ESTADO_FISICO: f.ESTADO_FISICO, ELEMENTOS: f.ELEMENTOS, COTIZACION: f.COTIZACION, ITEMS: f.ITEMS, TOTAL: f.TOTAL, ABONO: f.ABONO, ETAPA: f.ETAPA, INFORME_DEVUELTO: f.INFORME_DEVUELTO || '', NUM_FOTOS_FIN: (f._fin || []).length,
       informes: mock.infs.filter(function (x) { return x.NUMERO == f.NUMERO; }).map(function (x) { return { ID: x.ID, RONDA: x.RONDA, TIPO: x.TIPO, ESTADO: x.ESTADO, datos: x.final || x.original, respuesta: x.respuesta || null, numFotos: x.fotos.length }; }) };
   }).reverse() });
   if (o.accion === 'guardarInforme') { var f = mockFila(o.numero); if (!f || f.TECNICO !== tq) return rej(new Error('No asignada')); if (f.ETAPA === 'INFORME POR REVISAR' || f.ETAPA === 'ESPERANDO CLIENTE') return rej(new Error('Ya tiene un informe pendiente'));
@@ -858,14 +866,24 @@ $('f_abono').oninput = function () { recalcular(false); };
 /* ---------- fotos y videos ---------- */
 $('btnCamara').onclick = function () { $('inCamara').click(); };
 $('btnGaleria').onclick = function () { $('inGaleria').click(); };
-function recibirArchivos(lista) {
+$('btnVideo').onclick = function () { $('inVideo').click(); };
+$('inVideo').onchange = function () { recibirArchivos(this.files); this.value = ''; };
+var MAX_VIDEO = 35 * 1024 * 1024;
+function esVideoF(f) { return /^video\//.test(f.type || '') || /\.(mp4|mov|3gp|webm|mkv)$/i.test(f.name || ''); }
+/* agrega fotos (comprimidas) y videos (tal cual, máx. 35 MB) a una lista; avisa los videos muy pesados */
+function agregarMedios(lista, destino) {
+  var pesados = [];
   Array.prototype.forEach.call(lista, function (f) {
-    var esVideo = /^video\//.test(f.type);
-    var item = { file: f, video: esVideo, url: URL.createObjectURL(f), listo: esVideo ? Promise.resolve(f) : comprimir(f) };
-    S.archivos.push(item);
+    var v = esVideoF(f);
+    if (v && f.size > MAX_VIDEO) { pesados.push((f.name || 'video') + ' (' + Math.round(f.size / 1048576) + ' MB)'); return; }
+    destino.push({ file: f, video: v, url: URL.createObjectURL(f), listo: v ? Promise.resolve(f) : comprimir(f) });
   });
-  pintarFotos();
+  if (pesados.length) alert('Estos videos pesan más de 35 MB y no se pueden subir:\n' + pesados.join('\n') + '\n\nGrábelos más cortos (más o menos 1 minuto) o súbalos en partes.');
 }
+function miniatura(a) { return a.video ? '<video src="' + a.url + '" muted></video><span class="tag">video</span>' : '<img src="' + a.url + '">'; }
+function nombreMedio(base, f, k) { var v = esVideoF(f); return base.replace('{T}', v ? 'Video' : 'Foto') + String(k).padStart(2, '0') + (v ? ((f.name || '').match(/\.\w+$/) || ['.mp4'])[0].toLowerCase() : '.jpg'); }
+function mimeMedio(f) { return esVideoF(f) ? (f.type || 'video/mp4') : 'image/jpeg'; }
+function recibirArchivos(lista) { agregarMedios(lista, S.archivos); pintarFotos(); }
 $('inCamara').onchange = function () { recibirArchivos(this.files); this.value = ''; };
 $('inGaleria').onchange = function () { recibirArchivos(this.files); this.value = ''; };
 function pintarFotos() {
@@ -985,7 +1003,7 @@ function procesar() {
           if (f.size > 35 * 1024 * 1024) { P.subidos[i] = 'grande'; return; }   // videos muy pesados: solo se comparten por WhatsApp
           progreso(40 + Math.round(55 * i / Math.max(1, files.length)), 'Subiendo archivo ' + (i + 1) + ' de ' + files.length + '…');
           var ext = (f.name.match(/\.\w+$/) || ['.jpg'])[0];
-          return b64(f).then(function (x) { return api({ accion: 'subir', numero: P.numero, nombre: P.numero + '_' + String(i + 1).padStart(2, '0') + ext, mime: f.type || 'application/octet-stream', b64: x }); })
+          return b64(f).then(function (x) { return api({ accion: 'subir', numero: P.numero, nombre: P.numero + (/^video\//.test(f.type || '') ? '_Video_ingreso_' : '_Foto_ingreso_') + String(i + 1).padStart(2, '0') + ext, mime: f.type || 'application/octet-stream', b64: x }); })
             .then(function () { P.subidos[i] = true; });
         });
       });
@@ -1569,6 +1587,8 @@ function cargarMis() {
       if (o.INFORME_DEVUELTO && infDev) { boton(acc, '✏️ Corregir informe', 'pri', function () { abrirFormInf(o, !!(infDev.datos && infDev.datos.hallazgo), infDev); }); c.appendChild(d); return; }
       if (o.ETAPA === 'EN TALLER') boton(acc, '📝 Hacer informe', 'pri', function () { abrirFormInf(o, false); });
       if (o.ETAPA === 'APROBADO') boton(acc, '➕ Hallazgo nuevo (requiere autorización)', 'sec', function () { abrirFormInf(o, true); });
+      if (o.ETAPA === 'TERMINADO' || o.ETAPA === 'LISTO PARA ENTREGA')
+        boton(acc, Number(o.NUM_FOTOS_FIN) ? '📸 Agregar más fotos de cómo quedó (' + o.NUM_FOTOS_FIN + ' ya subidas)' : '📸 Agregar fotos de cómo quedó', Number(o.NUM_FOTOS_FIN) ? 'sec' : 'pri', function () { abrirFin(o, true); });
       if (o.ETAPA === 'APROBADO' || o.ETAPA === 'NO APROBADO')
         boton(acc, o.ETAPA === 'APROBADO' ? '✅ Terminé lo autorizado' : '✅ Vehículo armado, listo para entrega', 'pri', function () { abrirFin(o); });
       c.appendChild(d);
@@ -1641,15 +1661,13 @@ function totalInf() {
 $('btnInfItem').onclick = function () { S.inf.items.push({ concepto: '', cantidad: 1, valor: '' }); pintarItems($('infItems'), S.inf.items, totalInf); var l = $('infItems').querySelectorAll('.i_con'); if (l.length) l[l.length - 1].focus(); };
 $('btnInfCam').onclick = function () { $('inInfCam').click(); };
 $('btnInfGal').onclick = function () { $('inInfGal').click(); };
-$('inInfCam').onchange = $('inInfGal').onchange = function () {
-  Array.prototype.forEach.call(this.files, function (f) { S.inf.fotos.push({ url: URL.createObjectURL(f), listo: comprimir(f) }); });
-  this.value = ''; pintarFotosInf();
-};
+$('btnInfVid').onclick = function () { $('inInfVid').click(); };
+$('inInfCam').onchange = $('inInfGal').onchange = $('inInfVid').onchange = function () { agregarMedios(this.files, S.inf.fotos); this.value = ''; pintarFotosInf(); };
 function pintarFotosInf() {
   var c = $('infFotos'); c.innerHTML = '';
   S.inf.fotos.forEach(function (a, i) {
     var d = document.createElement('div'); d.className = 'foto';
-    d.innerHTML = '<img src="' + a.url + '"><button type="button">×</button>';
+    d.innerHTML = miniatura(a) + '<button type="button">×</button>';
     d.querySelector('button').onclick = function () { S.inf.fotos.splice(i, 1); pintarFotosInf(); };
     c.appendChild(d);
   });
@@ -1682,7 +1700,7 @@ function enviarInfTec() {
         seq = seq.then(function () {
           if (P.subidos[i]) return;
           progreso(30 + Math.round(65 * i / Math.max(1, files.length)), 'Subiendo foto ' + (i + 1) + ' de ' + files.length + '…');
-          return b64(f).then(function (x) { return api({ accion: 'subir', numero: I.orden.NUMERO, informe: P.id, nombre: P.id + '_' + String((I.fotosPrev || 0) + i + 1).padStart(2, '0') + '.jpg', mime: 'image/jpeg', b64: x }); })
+          return b64(f).then(function (x) { return api({ accion: 'subir', numero: I.orden.NUMERO, informe: P.id, nombre: nombreMedio(I.orden.NUMERO + '_{T}_informe_' + (String(P.id).split('-')[1] || '1') + '_', f, (I.fotosPrev || 0) + i + 1), mime: mimeMedio(f), b64: x }); })
             .then(function () { P.subidos[i] = true; });
         });
       });
@@ -1703,10 +1721,11 @@ function enviarInfTec() {
 }
 $('btnRecargarMis').onclick = cargarMis;
 /* terminar: con fotos de cómo quedó (obligatorias si hubo trabajos autorizados) */
-function abrirFin(o) {
-  var obl = o.ETAPA === 'APROBADO';
-  S.fin = { o: o, obl: obl, fotos: [], subidos: {} };
-  $('fnTitulo').textContent = (obl ? 'Terminé lo autorizado · Orden ' : 'Vehículo armado · Orden ') + o.NUMERO;
+function abrirFin(o, soloFotos) {   // soloFotos: la orden ya está terminada y se agregan fotos después
+  var obl = soloFotos || o.ETAPA === 'APROBADO';
+  S.fin = { o: o, obl: obl, fotos: [], subidos: {}, soloFotos: !!soloFotos, base: Number(o.NUM_FOTOS_FIN || 0) };
+  $('fnTitulo').textContent = (soloFotos ? 'Fotos de cómo quedó · Orden ' : (obl ? 'Terminé lo autorizado · Orden ' : 'Vehículo armado · Orden ')) + o.NUMERO;
+  $('btnFnOk').textContent = soloFotos ? '📤 Subir fotos' : '✅ Marcar terminada';
   $('fnSub').textContent = [o.TIPO_VEHICULO, o.MODELO, o.COLOR].filter(Boolean).join(' ') + ' · ' + titulo(o.CLIENTE);
   $('fnObl').textContent = obl ? '*' : '(opcional)';
   $('fnAyuda').textContent = obl ? 'Mínimo 1 foto. Se las envían al cliente con el aviso de entrega: tómelas bien, con el vehículo limpio y armado.' : 'Si quiere, tome una foto de cómo queda armado el vehículo.';
@@ -1716,27 +1735,25 @@ function pintarFotosFin() {
   var c = $('fnFotos'); c.innerHTML = '';
   S.fin.fotos.forEach(function (a, i) {
     var d = document.createElement('div'); d.className = 'foto';
-    d.innerHTML = '<img src="' + a.url + '"><button type="button">×</button>';
+    d.innerHTML = miniatura(a) + '<button type="button">×</button>';
     d.querySelector('button').onclick = function () { S.fin.fotos.splice(i, 1); S.fin.subidos = {}; pintarFotosFin(); };
     c.appendChild(d);
   });
 }
 $('btnFnCam').onclick = function () { $('inFnCam').click(); };
 $('btnFnGal').onclick = function () { $('inFnGal').click(); };
-$('inFnCam').onchange = $('inFnGal').onchange = function () {
-  Array.prototype.forEach.call(this.files, function (f) { S.fin.fotos.push({ url: URL.createObjectURL(f), listo: comprimir(f) }); });
-  this.value = ''; $('errFn').textContent = ''; pintarFotosFin();
-};
+$('btnFnVid').onclick = function () { $('inFnVid').click(); };
+$('inFnCam').onchange = $('inFnGal').onchange = $('inFnVid').onchange = function () { agregarMedios(this.files, S.fin.fotos); this.value = ''; $('errFn').textContent = ''; pintarFotosFin(); };
 $('btnFnCancelar').onclick = function () { mostrar('mFin', false); };
 $('btnFnOk').onclick = function () {
   var F = S.fin;
-  if (F.obl && !F.fotos.length) { $('errFn').textContent = 'Falta: mínimo 1 foto de cómo quedó el vehículo.'; return; }
+  if (F.obl && !F.fotos.some(function (a) { return !a.video; })) { $('errFn').textContent = 'Falta: mínimo 1 foto de cómo quedó el vehículo (además de los videos, si los hay).'; return; }
   mostrar('mFin', false); terminarConFotos();
 };
 function terminarConFotos() {
   var F = S.fin, o = F.o, n = F.fotos.length;
-  var msg = '✅ *Orden ' + ordNom(o.NUMERO, o.CLIENTE) + ' terminada*' + (o.ETAPA === 'NO APROBADO' ? ' (sin reparar: el cliente no autorizó; cobrar la revisión)' : '') + '\n🔹 ' + [o.TIPO_VEHICULO, o.MODELO, o.COLOR].filter(Boolean).join(' ') +
-    (n ? '\n📸 ' + n + ' foto(s) del trabajo terminado en la app' : '') + '\n👨‍🔧 ' + titulo(S.usuario) + '\n\nEl vehículo está listo para avisarle la entrega al cliente.';
+  var msg = F.soloFotos ? '📸 *Orden ' + ordNom(o.NUMERO, o.CLIENTE) + '* – se agregaron ' + n + ' foto(s) del trabajo terminado en la app.\n🔹 ' + [o.TIPO_VEHICULO, o.MODELO, o.COLOR].filter(Boolean).join(' ') + '\n👨‍🔧 ' + titulo(S.usuario) + '\n\nYa las puede compartir con el cliente en el aviso de entrega (Órdenes › Avisar entrega).' : '✅ *Orden ' + ordNom(o.NUMERO, o.CLIENTE) + ' terminada*' + (o.ETAPA === 'NO APROBADO' ? ' (sin reparar: el cliente no autorizó; cobrar la revisión)' : '') + '\n🔹 ' + [o.TIPO_VEHICULO, o.MODELO, o.COLOR].filter(Boolean).join(' ') +
+    (n ? '\n📸 ' + n + ' foto(s)/video(s) del trabajo terminado en la app' : '') + '\n👨‍🔧 ' + titulo(S.usuario) + '\n\nEl vehículo está listo para avisarle la entrega al cliente.';
   $('btnReintentar').onclick = terminarConFotos;
   mostrar('mProceso', true); mostrar('btnReintentar', false); $('procErr').textContent = ''; $('procTitulo').textContent = 'Orden ' + o.NUMERO;
   Promise.all(F.fotos.map(function (a) { return a.listo; })).then(function (files) {
@@ -1744,20 +1761,22 @@ function terminarConFotos() {
     files.forEach(function (f, i) {
       seq = seq.then(function () {
         if (F.subidos[i]) return;
-        progreso(10 + Math.round(80 * i / Math.max(1, files.length)), 'Subiendo foto ' + (i + 1) + ' de ' + files.length + '…');
-        return b64(f).then(function (x) { return api({ accion: 'subir', esFin: true, numero: o.NUMERO, nombre: o.NUMERO + '_FIN_' + String(i + 1).padStart(2, '0') + '.jpg', mime: 'image/jpeg', b64: x }); })
+        progreso(10 + Math.round(80 * i / Math.max(1, files.length)), 'Subiendo ' + (esVideoF(f) ? 'video' : 'foto') + ' ' + (i + 1) + ' de ' + files.length + '…');
+        return b64(f).then(function (x) { return api({ accion: 'subir', esFin: true, numero: o.NUMERO, nombre: nombreMedio(o.NUMERO + '_{T}_terminado_', f, (F.base || 0) + i + 1), mime: mimeMedio(f), b64: x }); })
           .then(function () { F.subidos[i] = true; });
       });
     });
     return seq;
   }).then(function () {
+    if (F.soloFotos) return;
     progreso(95, 'Marcando terminada…');
     return api({ accion: 'terminar', numero: o.NUMERO, avisoServicio: msg });
   }).then(function () {
     progreso(100, 'Listo');
     setTimeout(function () {
       mostrar('mProceso', false); cargarMis();
-      avisoServicio('✓ La orden ' + o.NUMERO + ' quedó marcada como TERMINADA en la app' + (n ? ' con ' + n + ' foto(s)' : '') + '. Ahora avísele a Alexander (servicio técnico) para que le avise la entrega al cliente.', msg, o.NUMERO);
+      avisoServicio(F.soloFotos ? '✓ Se subieron ' + n + ' foto(s) de cómo quedó la orden ' + o.NUMERO + '. Avísele a Alexander (servicio técnico) para que se las envíe al cliente.'
+        : '✓ La orden ' + o.NUMERO + ' quedó marcada como TERMINADA en la app' + (n ? ' con ' + n + ' foto(s)' : '') + '. Ahora avísele a Alexander (servicio técnico) para que le avise la entrega al cliente.', msg, o.NUMERO);
     }, 400);
   }).catch(function (e) { $('procErr').textContent = 'No se pudo terminar: ' + e.message + '. Revise la conexión y reintente (las fotos que ya subieron no se repiten).'; mostrar('btnReintentar', true); });
 }
@@ -1979,7 +1998,7 @@ function abrirEnviarInf(inf, txt, d, etapa) {
     traerFotosInforme(inf, function (files, fallas) {
       S.ei.files = files;
       $('btnEiFotos').disabled = !files.length;
-      $('eiFotosTxt').textContent = files.length ? files.length + ' foto(s) listas. En WhatsApp elija el chat del cliente.' + txtGrupos(files) + (fallas ? ' (' + fallas + ' no se pudieron traer: están en la carpeta de la orden, Órdenes › Fotos.)' : '')
+      $('eiFotosTxt').textContent = files.length ? files.length + ' foto(s) listas. En WhatsApp elija el chat del cliente.' + txtGrupos(files) + (fallas ? ' (' + fallas + ' archivo(s) muy pesados o que no se pudieron traer: están en la carpeta de la orden, Órdenes › Fotos.)' : '')
         : 'No se pudieron traer las fotos. Revise la conexión y vuelva a abrir, o envíelas desde la carpeta de la orden (Órdenes › Fotos).';
     });
   }
@@ -1992,7 +2011,7 @@ function traerFotosInforme(inf, fin) {
     if (k >= n) return fin(files, fallas);
     $('eiFotosTxt').textContent = 'Preparando foto ' + (k + 1) + ' de ' + n + '…';
     api({ accion: 'fotosInforme', id: inf.ID, k: k }).then(function (r) {
-      if (r.foto) files.push(b64aFile(r.foto)); else if (r.fotos && r.fotos[k]) files.push(b64aFile(r.fotos[k]));
+      if (r.grande) fallas++; else if (r.foto) files.push(b64aFile(r.foto)); else if (r.fotos && r.fotos[k]) files.push(b64aFile(r.fotos[k]));
       k++; una(0);
     }).catch(function () { if (intento < 1) return setTimeout(function () { una(intento + 1); }, 800); fallas++; k++; una(0); });
   }
@@ -2127,11 +2146,11 @@ function abrirEntrega(o) {
     (function una(intento) {
       if (k >= ids.length) {
         S.entFin.files = files; $('btnEnFotos').disabled = !files.length;
-        $('enFotosTxt').textContent = files.length ? 'Después de enviar el mensaje, comparta las ' + files.length + ' foto(s) de cómo quedó.' + txtGrupos(files) + (fallas ? ' (' + fallas + ' no se pudieron traer.)' : '') : 'No se pudieron traer las fotos del trabajo terminado.';
+        $('enFotosTxt').textContent = files.length ? 'Después de enviar el mensaje, comparta las ' + files.length + ' foto(s) de cómo quedó.' + txtGrupos(files) + (fallas ? ' (' + fallas + ' video(s) pesados o archivos que no se pudieron traer: están en Órdenes › Fotos.)' : '') : 'No se pudieron traer las fotos del trabajo terminado.';
         return;
       }
       $('enFotosTxt').textContent = 'Preparando foto ' + (k + 1) + ' de ' + ids.length + ' del trabajo terminado…';
-      api({ accion: 'fotosFin', numero: o.NUMERO, k: k }).then(function (r) { files.push(b64aFile(r.foto)); k++; una(0); })
+      api({ accion: 'fotosFin', numero: o.NUMERO, k: k }).then(function (r) { if (r.grande) fallas++; else files.push(b64aFile(r.foto)); k++; una(0); })
         .catch(function () { if (intento < 1) return setTimeout(function () { una(1); }, 800); fallas++; k++; una(0); });
     })(0);
   }
