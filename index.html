@@ -79,15 +79,15 @@
   .paso > div:last-child { flex:1; }
   .orden { display:flex; gap:10px; align-items:center; padding:10px 0; border-bottom:1px solid #edf1ea; }
   .orden:last-child { border-bottom:0; }
-  .orden .num { font-weight:800; color:var(--rojo); min-width:52px; font-size:17px; }
-  .orden .info { flex:1; min-width:0; font-size:14px; }
-  .orden .info div:first-child { font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-  .orden .info div:last-child { color:var(--gris); font-size:12px; }
+  .orden .num { font-weight:800; color:var(--rojo); min-width:58px; font-size:21px; }
+  .orden .info { flex:1; min-width:0; font-size:16px; }
+  .orden .info div:first-child { font-weight:700; font-size:17px; line-height:1.35; }
+  .orden .info div:last-child { color:#4a5246; font-size:14.5px; line-height:1.4; margin-top:2px; }
   .orden { flex-wrap:wrap; }
   .orden .acc { display:flex; gap:6px; flex-wrap:wrap; flex-basis:100%; padding-left:62px; }
-  .orden .acc button, .orden .acc a { font-size:13px; padding:7px 9px; border-radius:8px; border:1px solid var(--borde); background:#fff; color:#1d2419; text-decoration:none; }
+  .orden .acc button, .orden .acc a { font-size:15px; padding:9px 11px; border-radius:8px; border:1px solid var(--borde); background:#fff; color:#1d2419; text-decoration:none; }
   .orden.anulada { opacity:.45; } .orden.anulada .info div:first-child { text-decoration:line-through; }
-  .badge { font-size:11px; padding:2px 6px; border-radius:5px; background:var(--claro); color:var(--verde); margin-left:4px; font-weight:700; }
+  .badge { font-size:13.5px; padding:3px 8px; border-radius:6px; background:var(--claro); color:var(--verde); margin-left:4px; font-weight:700; display:inline-block; margin-top:2px; }
   .demo { background:#fff3cd; color:#7a5b00; text-align:center; font-size:13px; padding:6px; }
   .check { display:flex; gap:10px; align-items:flex-start; margin-top:12px; font-size:14px; }
   .check input { width:22px; height:22px; flex:0 0 22px; }
@@ -109,6 +109,10 @@
   .estado-box { border-radius:9px; padding:9px 11px; margin-top:8px; font-size:14px; }
   .it-ok { color:#27500a; } .it-no { color:#a32d2d; text-decoration:line-through; } .it-pen { color:#7a5b00; }
   details summary { font-size:14px; color:var(--verde); font-weight:600; margin-top:10px; }
+  .optH { margin:14px 0 6px; padding:8px 12px; border-radius:8px; background:#fff3cd; color:#6b4a00; font-weight:800; font-size:16px; }
+  .itc.enOp { border-left:4px solid #f3d27a; }
+  .optPie { display:flex; justify-content:space-between; padding:6px 4px 2px; font-size:15px; color:#6b4a00; }
+  .optNueva { margin-top:12px; border-style:dashed !important; }
   .itc { border:1px solid var(--borde); border-radius:9px; padding:8px; margin-top:8px; background:#fbfdfa; }
   .itc .r1 { display:grid; grid-template-columns:92px minmax(0,1fr); gap:6px; }
   .itc .r2 { display:grid; grid-template-columns:62px minmax(0,1fr) minmax(0,1fr) 32px; gap:6px; margin-top:6px; align-items:end; }
@@ -655,6 +659,7 @@
   <h3 id="rpTitulo">Respuesta del cliente</h3>
   <div class="nota" id="rpSub"></div>
   <div id="rpForm">
+    <div id="rpOpc" class="oculto" style="display:grid;gap:6px;margin-bottom:8px"></div>
     <div id="rpItems"></div>
     <div class="fila"><button class="btn sec peq" id="btnRpTodo" type="button">✅ Autorizó todo</button><button class="btn sec peq" id="btnRpNada" type="button">❌ No autorizó nada</button></div>
     <div class="total"><span>Total autorizado</span><span id="rpTotal">$ 0</span></div>
@@ -1513,8 +1518,8 @@ var ETQ = {
 function badgeEtapa(e) { var x = ETQ[e]; return x ? '<span class="badge" style="background:' + x[1] + ';color:' + x[2] + '">' + x[0] + '</span>' : ''; }
 // revisión de mantenimiento: componente → subcomponentes (cada uno con ✅ ⚠️ 🔴 y su nota). Limpieza es un solo punto.
 var COMPONENTES = [
-  ['Freno delantero', ['Pastillas', 'Líquido de freno', 'Bomba y cáliper', 'Guaya']],
-  ['Freno trasero', ['Bandas', 'Líquido de freno', 'Bomba y cáliper', 'Guaya']],
+  ['Freno delantero', ['Pastillas/Bandas', 'Líquido de freno', 'Bomba y cáliper', 'Guaya']],
+  ['Freno trasero', ['Pastillas/Bandas', 'Líquido de freno', 'Bomba y cáliper', 'Guaya']],
   ['Ruedas y rodamientos', ['Rodamientos delanteros', 'Llanta delantera', 'Rodamientos traseros', 'Llanta trasera']],
   ['Motor', ['Cable', 'Tapas', 'Rin']],
   ['Suspensión y dirección', ['Rodamientos de dirección', 'Barras delanteras', 'Amortiguador trasero', 'Bujes de tijera']],
@@ -1522,7 +1527,7 @@ var COMPONENTES = [
   ['Sistema eléctrico', ['Estado del cableado', 'Estado del sistema de luces']],
   ['Batería', ['Estructura / carcasa', 'Voltaje', 'Conectores']],
   ['Limpieza', [], { sinMarca: true, nota: 'Se efectúa limpieza completa del vehículo y de los componentes.' }]];
-var NOMBRES_VIEJOS = { 'Pin': 'Rin', 'Rodamientos y dirección': 'Rodamientos de dirección' };   // informes guardados con el nombre anterior
+var NOMBRES_VIEJOS = { 'Pin': 'Rin', 'Rodamientos y dirección': 'Rodamientos de dirección', 'Pastillas': 'Pastillas/Bandas', 'Bandas': 'Pastillas/Bandas' };   // informes guardados con el nombre anterior
 var NOTA_MIN_SUB = 5;   // letras mínimas de la nota de cada subcomponente
 var EST = { ok: ['✅', 'En buen estado'], ajuste: ['⚠️', 'Requiere ajuste'], cambio: ['🔴', 'Requiere cambio'], na: ['➖', 'No aplica'] };
 function appUrl() { return location.origin + location.pathname; }
@@ -1561,16 +1566,44 @@ function pintarComponentes(cont, comps, alCambiar) {
   });
 }
 /* cotización: una tarjeta por ítem con Código · Concepto · Cantidad · Valor unitario · Total (el código es libre: MDO, P-32, R-0062…) */
+/* opciones de cotización: cada ítem puede llevar op = 1, 2, 3 (el cliente escoge una). Sin op = cotización única */
+function opcionesDe(items) { var o = []; (items || []).forEach(function (i) { if (i.op && o.indexOf(Number(i.op)) < 0) o.push(Number(i.op)); }); return o.sort(); }
+function normalizarOpciones(items) {
+  var ops = opcionesDe(items);
+  if (ops.length <= 1) { items.forEach(function (i) { delete i.op; }); return; }
+  items.forEach(function (i) { i.op = ops.indexOf(Number(i.op)) + 1 || 1; });
+  items.sort(function (a, b) { return a.op - b.op; });
+}
+function nuevoItem(items) { var ops = opcionesDe(items), it = { concepto: '', cantidad: 1, valor: '' }; if (ops.length) it.op = ops[ops.length - 1]; return it; }
 function pintarItems(cont, items, alCambiar) {
   cont.innerHTML = '';
+  normalizarOpciones(items);
+  var ops = opcionesDe(items), opAnt = null;
+  function cierreOp(op) {
+    var sub = sumaItems(items.filter(function (i) { return Number(i.op) === op; }));
+    var w = document.createElement('div'); w.className = 'optPie'; w.dataset.op = op;
+    w.innerHTML = '<span>Total opción ' + op + '</span><b>' + fmt(sub) + '</b>';
+    var b = document.createElement('button'); b.type = 'button'; b.className = 'btn sec peq'; b.textContent = '+ Agregar ítem a la opción ' + op;
+    b.onclick = function () { var ult = -1; items.forEach(function (i, k) { if (Number(i.op) === op) ult = k; }); items.splice(ult + 1, 0, { op: op, concepto: '', cantidad: 1, valor: '' }); pintarItems(cont, items, alCambiar); if (alCambiar) alCambiar(); };
+    cont.appendChild(b); cont.appendChild(w);
+  }
   items.forEach(function (it, k) {
-    var d = document.createElement('div'); d.className = 'itc';
+    if (ops.length && Number(it.op) !== opAnt) {
+      if (opAnt !== null) cierreOp(opAnt);
+      opAnt = Number(it.op);
+      var h = document.createElement('div'); h.className = 'optH'; h.textContent = 'Opción ' + opAnt; cont.appendChild(h);
+    }
+    var d = document.createElement('div'); d.className = 'itc' + (ops.length ? ' enOp' : '');
     d.innerHTML = '<div class="r1"><div><small>Código *</small><input class="i_cod" autocapitalize="characters" autocomplete="off"></div><div><small>Concepto *</small><input class="i_con" placeholder="Repuesto o trabajo"></div></div>' +
       '<div class="r2"><div><small>Cant. *</small><input class="i_can" type="number" inputmode="numeric" min="1"></div><div><small>Valor unitario *</small><input class="i_val" type="number" inputmode="numeric" min="0"></div>' +
       '<div><small>Total</small><div class="tot"></div></div><button type="button" aria-label="Quitar ítem">×</button></div>';
     var cod = d.querySelector('.i_cod'), con = d.querySelector('.i_con'), can = d.querySelector('.i_can'), val = d.querySelector('.i_val'), tot = d.querySelector('.tot');
     cod.value = it.codigo || ''; con.value = it.concepto || ''; can.value = it.cantidad || 1; val.value = it.valor || '';
-    function tt() { tot.textContent = fmt(Number(it.cantidad || 0) * Number(it.valor || 0)); d.classList.remove('mal'); if (alCambiar) alCambiar(); }
+    function tt() {
+      tot.textContent = fmt(Number(it.cantidad || 0) * Number(it.valor || 0)); d.classList.remove('mal');
+      cont.querySelectorAll('.optPie').forEach(function (w) { var op = Number(w.dataset.op); w.querySelector('b').textContent = fmt(sumaItems(items.filter(function (i) { return Number(i.op) === op; }))); });
+      if (alCambiar) alCambiar();
+    }
     cod.oninput = function () { it.codigo = cod.value.trim().toUpperCase(); tt(); };
     con.oninput = function () { it.concepto = con.value; tt(); };
     can.oninput = function () { it.cantidad = Number(can.value || 0); tt(); };
@@ -1579,10 +1612,24 @@ function pintarItems(cont, items, alCambiar) {
     d.querySelector('button').onclick = function () { items.splice(k, 1); pintarItems(cont, items, alCambiar); if (alCambiar) alCambiar(); };
     cont.appendChild(d);
   });
+  if (opAnt !== null) cierreOp(opAnt);
+  if (ops.length < 3) {
+    var bo = document.createElement('button'); bo.type = 'button'; bo.className = 'btn sec peq optNueva';
+    bo.textContent = ops.length ? '➕ Agregar opción ' + (ops.length + 1) + ' (para que el cliente escoja)' : '➕ Hacer otra opción de cotización (el cliente escoge)';
+    bo.onclick = function () {
+      if (!ops.length) { if (!items.length) items.push({ concepto: '', cantidad: 1, valor: '' }); items.forEach(function (i) { i.op = 1; }); }
+      var n = opcionesDe(items).length + 1; items.push({ op: n, concepto: '', cantidad: 1, valor: '' });
+      pintarItems(cont, items, alCambiar); if (alCambiar) alCambiar();
+      var l = cont.querySelectorAll('.i_cod'); if (l.length) l[l.length - 1].focus();
+    };
+    cont.appendChild(bo);
+  }
 }
+/* totales por opción (o uno solo) */
+function totalesOp(items) { var ops = opcionesDe(items); return ops.length ? ops.map(function (op) { return { op: op, total: sumaItems(items.filter(function (i) { return Number(i.op) === op; })) }; }) : null; }
 function limpiarItems(l) {
   return (l || []).filter(function (i) { return String(i.concepto || '').trim() || String(i.codigo || '').trim() || Number(i.valor); })
-    .map(function (i) { return { codigo: String(i.codigo || '').trim().toUpperCase(), concepto: String(i.concepto || '').trim(), cantidad: Number(i.cantidad || 0), valor: Number(i.valor || 0) }; });
+    .map(function (i) { var o = { codigo: String(i.codigo || '').trim().toUpperCase(), concepto: String(i.concepto || '').trim(), cantidad: Number(i.cantidad || 0), valor: Number(i.valor || 0) }; if (i.op) o.op = Number(i.op); return o; });
 }
 /* revisa la cotización y los componentes; marca en rojo lo que falta. Devuelve la lista de faltantes */
 function validarInforme(contItems, itemsCrudos, contComps, comps, tipo, desc, hallazgo) {
@@ -1796,12 +1843,12 @@ $('segTipoInf').querySelectorAll('button').forEach(function (b) {
   b.onclick = function () { $('segTipoInf').querySelectorAll('button').forEach(function (x) { x.classList.remove('on'); }); b.classList.add('on'); S.inf.tipo = b.dataset.v; aplicarTipoInf(); };
 });
 function totalInf() {
-  var t = sumaItems(S.inf.items), ab = S.inf.hallazgo ? 0 : cotizIngreso(S.inf.orden).abono;
-  $('infTotal').textContent = fmt(t);
-  $('infAbono').innerHTML = ab ? 'Abono del cliente: <b>' + fmt(ab) + '</b> · Saldo: <b>' + fmt(t - ab) + '</b><br>El abono no se escribe como ítem: se descuenta solo en el mensaje al cliente.' : '';
+  var t = sumaItems(S.inf.items), ab = S.inf.hallazgo ? 0 : cotizIngreso(S.inf.orden).abono, to = totalesOp(S.inf.items);
+  $('infTotal').innerHTML = to ? to.map(function (x) { return 'Opción ' + x.op + ': ' + fmt(x.total); }).join('<br>') : fmt(t);
+  $('infAbono').innerHTML = ab ? 'Abono del cliente: <b>' + fmt(ab) + '</b> · Saldo: <b>' + (to ? to.map(function (x) { return 'op. ' + x.op + ' ' + fmt(x.total - ab); }).join(' · ') : fmt(t - ab)) + '</b><br>El abono no se escribe como ítem: se descuenta solo en el mensaje al cliente.' : '';
   mostrar('infAbono', !!ab);
 }
-$('btnInfItem').onclick = function () { S.inf.items.push({ concepto: '', cantidad: 1, valor: '' }); pintarItems($('infItems'), S.inf.items, totalInf); var l = $('infItems').querySelectorAll('.i_con'); if (l.length) l[l.length - 1].focus(); };
+$('btnInfItem').onclick = function () { S.inf.items.push(nuevoItem(S.inf.items)); pintarItems($('infItems'), S.inf.items, totalInf); var l = $('infItems').querySelectorAll('.i_con'); if (l.length) l[l.length - 1].focus(); };
 $('btnInfCam').onclick = function () { $('inInfCam').click(); };
 $('btnInfGal').onclick = function () { $('inInfGal').click(); };
 $('btnInfVid').onclick = function () { $('inInfVid').click(); };
@@ -1827,7 +1874,7 @@ $('btnAvanceInf').onclick = function () { guardarAvance(false); };
 function guardarAvance(salir) {
   var I = S.inf;
   var items = (I.items || []).filter(function (i) { return i && (String(i.codigo || '').trim() || String(i.concepto || '').trim() || Number(i.valor)); })
-    .map(function (i) { return { codigo: i.codigo || '', concepto: i.concepto || '', cantidad: i.cantidad || 1, valor: i.valor || '' }; });
+    .map(function (i) { var o = { codigo: i.codigo || '', concepto: i.concepto || '', cantidad: i.cantidad || 1, valor: i.valor || '' }; if (i.op) o.op = i.op; return o; });
   var datos = { tipo: I.tipo, componentes: I.tipo === 'mantenimiento' ? limpiarComps(I.comps) : [], descripcion: $('infDesc').value.trim(), observaciones: '', items: items, hallazgo: !!I.hallazgo };
   $('btnReintentar').onclick = function () { guardarAvance(salir); };
   mostrar('mProceso', true); mostrar('btnReintentar', false); $('procErr').textContent = ''; $('procTitulo').textContent = 'Orden ' + I.orden.NUMERO + ' · guardando avance';
@@ -2066,13 +2113,25 @@ function mensajeInforme(inf, dt) {
   if (prev.length || items.length) {
     L.push('', '💰 *Cotización*');
     if (prev.length) { L.push('_En proceso (autorizado):_'); prev.forEach(function (i) { L.push('• ' + linItem(i, true)); }); }
-    if (items.length) { L.push('_Por confirmar:_'); items.forEach(function (i) { L.push('• ' + linItem(i, true)); }); }
-    var tot = sumaItems(prev) + sumaItems(items), ab = Number(numDe(o.ABONO) || 0);
-    L.push('', 'Total: ' + fmt(tot));
-    if (ab) L.push('Abono: ' + fmt(ab));
-    L.push('Saldo: ' + fmt(tot - ab));
-    L.push('Los pagos con tarjeta tienen un recargo del 4%.');
-    if (items.length) L.push('', '✅ Por favor indíquenos qué ítems *autoriza* para continuar. Sin su autorización no realizamos esos trabajos.');
+    var ab = Number(numDe(o.ABONO) || 0), to = totalesOp(items), pv = sumaItems(prev);
+    if (to) {   // varias opciones: el cliente escoge una
+      L.push('Le presentamos *' + to.length + ' opciones*, escoja la que prefiera:');
+      to.forEach(function (x) {
+        L.push('', (['', '1️⃣', '2️⃣', '3️⃣'][x.op] || '▪️') + ' *Opción ' + x.op + '*');
+        items.filter(function (i) { return Number(i.op) === x.op; }).forEach(function (i) { L.push('• ' + linItem(i, true)); });
+        L.push('Total opción ' + x.op + ': ' + fmt(pv + x.total) + (ab ? ' · Abono: ' + fmt(ab) + ' · Saldo: ' + fmt(pv + x.total - ab) : ''));
+      });
+      L.push('', 'Los pagos con tarjeta tienen un recargo del 4%.');
+      L.push('', '✅ Por favor indíquenos qué *opción* autoriza (' + to.map(function (x) { return 'Opción ' + x.op; }).join(' u ') + ') para continuar. Sin su autorización no realizamos esos trabajos.');
+    } else {
+      if (items.length) { L.push('_Por confirmar:_'); items.forEach(function (i) { L.push('• ' + linItem(i, true)); }); }
+      var tot = pv + sumaItems(items);
+      L.push('', 'Total: ' + fmt(tot));
+      if (ab) L.push('Abono: ' + fmt(ab));
+      L.push('Saldo: ' + fmt(tot - ab));
+      L.push('Los pagos con tarjeta tienen un recargo del 4%.');
+      if (items.length) L.push('', '✅ Por favor indíquenos qué ítems *autoriza* para continuar. Sin su autorización no realizamos esos trabajos.');
+    }
   }
   L.push('', '📍 Av. Suba cra 50 # 91 - 82 - Bogotá · 📞 300 347 9102');
   return L.join('\n');
@@ -2145,8 +2204,9 @@ function datosRev() {
 function revTotales() {
   var sin = limpiarItems(S.rev.datos.items).filter(function (i) { return !i.codigo; }).length;
   $('revSinCod').textContent = sin ? '⚠️ ' + sin + (sin === 1 ? ' ítem sin código' : ' ítems sin código') + ': es obligatorio para enviar.' : '';
-  var tot = sumaItems(S.rev.inf.previos) + sumaItems(S.rev.datos.items), ab = Number(numDe(S.rev.inf.orden.ABONO) || 0);
-  $('revTotal').textContent = fmt(tot); $('revSaldo').textContent = fmt(tot - ab);
+  var pv = sumaItems(S.rev.inf.previos), tot = pv + sumaItems(S.rev.datos.items), ab = Number(numDe(S.rev.inf.orden.ABONO) || 0), to = totalesOp(S.rev.datos.items);
+  if (to) { $('revTotal').innerHTML = to.map(function (x) { return 'Opción ' + x.op + ': ' + fmt(pv + x.total); }).join('<br>'); $('revSaldo').innerHTML = to.map(function (x) { return 'Opción ' + x.op + ': ' + fmt(pv + x.total - ab); }).join('<br>'); }
+  else { $('revTotal').textContent = fmt(tot); $('revSaldo').textContent = fmt(tot - ab); }
 }
 function revCambio() { revTotales(); if (!S.rev.editado) $('revTexto').value = mensajeInforme(S.rev.inf, datosRev()); }
 $('revDesc').oninput = revCambio;
@@ -2156,7 +2216,7 @@ $('segRevTipo').querySelectorAll('button').forEach(function (b) {
   b.onclick = function () { $('segRevTipo').querySelectorAll('button').forEach(function (x) { x.classList.remove('on'); }); b.classList.add('on'); S.rev.datos.tipo = b.dataset.v; mostrar('cardRevMant', b.dataset.v === 'mantenimiento');
     if (!S.rev.datos.hallazgo) $('lblRevDesc').textContent = b.dataset.v === 'mantenimiento' ? 'Trabajos realizados / comentarios / observaciones *' : 'Descripción del proceso, hallazgos y observaciones *'; revCambio(); };
 });
-$('btnRevItem').onclick = function () { S.rev.datos.items.push({ concepto: '', cantidad: 1, valor: '' }); pintarItems($('revItems'), S.rev.datos.items, revCambio); };
+$('btnRevItem').onclick = function () { S.rev.datos.items.push(nuevoItem(S.rev.datos.items)); pintarItems($('revItems'), S.rev.datos.items, revCambio); };
 $('btnRevVolver').onclick = function () { verTab('Informes'); };
 $('btnRevEnviar').onclick = function () {
   var d = datosRev(), txt = $('revTexto').value.trim(), inf = S.rev.inf, btn = this;
@@ -2220,7 +2280,11 @@ function abrirRespuesta(inf) {
   $('rpTitulo').textContent = 'Respuesta del cliente · Orden ' + inf.NUMERO;
   $('rpSub').textContent = inf.orden.NOMBRE + ' · informe enviado ' + txtDias(diasDesde(inf.FECHA_ENVIO)) + '. Marque lo que el cliente autorizó:';
   var c = $('rpItems'); c.innerHTML = '';
+  var ops = opcionesDe(it), opA = null;
+  mostrar('rpOpc', ops.length > 0); $('rpOpc').innerHTML = '';
+  ops.forEach(function (op) { boton($('rpOpc'), '✅ Escogió la opción ' + op, 'pri', function () { S.rp.ap = it.map(function (x) { return Number(x.op) === op; }); pintarResp(); }); });
   it.forEach(function (i, k) {
+    if (ops.length && Number(i.op) !== opA) { opA = Number(i.op); var h = document.createElement('div'); h.className = 'optH'; h.textContent = 'Opción ' + opA + ' · ' + fmt(sumaItems(it.filter(function (x) { return Number(x.op) === opA; }))); c.appendChild(h); }
     var d = document.createElement('div'); d.className = 'resp-it';
     d.innerHTML = '<div>' + esc(linItem(i, false)) + '<div class="nota" style="margin:0">' + fmt(Number(i.cantidad || 1) * Number(i.valor || 0)) + '</div></div><div class="seg"><button type="button" data-v="si">✅ Sí</button><button type="button" data-v="no">❌ No</button></div>';
     d.querySelectorAll('.seg button').forEach(function (b) { b.onclick = function () { S.rp.ap[k] = b.dataset.v === 'si'; pintarResp(); }; });
