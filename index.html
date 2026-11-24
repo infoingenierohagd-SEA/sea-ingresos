@@ -103,6 +103,11 @@
   .est3 button.on[data-v=ok] { background:#eaf3de; border-color:#639922; color:#27500a; font-weight:700; }
   .est3 button.on[data-v=ajuste] { background:#fff3cd; border-color:#ba7517; color:#633806; font-weight:700; }
   .est3 button.on[data-v=cambio] { background:#fde7e7; border-color:#e24b4a; color:#791f1f; font-weight:700; }
+  .est3 button.on[data-v=na] { background:#ececec; border-color:#888; color:#333; font-weight:700; }
+  .est3.est4 button { font-size:12px; padding:8px 1px; }
+  .comp.bloq { opacity:.55; }
+  .comp.bloq .est3 button, .comp.bloq input { pointer-events:none; }
+  .guayaAyuda { margin:0 0 6px; }
   .est3 button.on[data-v=na] { background:#f1efe8; border-color:#888780; color:#444441; font-weight:700; }
   .comp.mal { background:#fff5f5; } .comp.mal .nom { color:var(--rojo); }
   .comp input { margin-top:6px; padding:8px 10px; font-size:15px; }
@@ -664,6 +669,10 @@
     <div class="fila"><button class="btn sec peq" id="btnRpTodo" type="button">✅ Autorizó todo</button><button class="btn sec peq" id="btnRpNada" type="button">❌ No autorizó nada</button></div>
     <div class="total"><span>Total autorizado</span><span id="rpTotal">$ 0</span></div>
     <div class="nota" id="rpRevision"></div>
+    <label style="margin-top:12px">📝 Observación para el técnico (opcional)</label>
+    <textarea id="rpObs" rows="2" style="min-height:64px" placeholder="Ej.: El cliente trae los repuestos para instalarlos. Cobrar solo la mano de obra."></textarea>
+    <div class="fila" style="flex-wrap:wrap"><button class="btn sec peq" id="btnRpObsRep" type="button">El cliente trae los repuestos</button></div>
+    <div class="nota">Le llega al técnico en el aviso de WhatsApp y la ve en su orden. El cliente no la recibe.</div>
     <div id="errRp" class="err"></div>
     <button class="btn pri" id="btnRpGuardar">Guardar respuesta</button>
     <button class="btn sec" id="btnRpCancelar">Cancelar</button>
@@ -720,7 +729,7 @@ function mockApi(o) {
       if (o.accion === 'login') return res({ ok: true, usuario: us, rol: 'coordinador', siguiente: mock.ultimo + 1, formas: [], tecnicos: ['ANDERSSON GARZON', 'CAMILO CARDENAS'], celulares: { 'ANDERSSON GARZON': '3124412200', 'CAMILO CARDENAS': '3222200341' }, valorRevision: 60000 });
       if (o.accion === 'informes') return res({ ok: true, valorRevision: 60000, informes: mock.infs.filter(function (x) { return x.ESTADO === 'POR REVISAR' || x.ESTADO === 'ENVIADO' || x.ESTADO === 'DEVUELTO'; }).map(function (x) { var f = mockFila(x.NUMERO); return Object.assign({}, x, { datos: x.final || x.original, numFotos: x.fotos.length, previos: mockAprob(x.NUMERO, x.RONDA), orden: { NOMBRE: f.NOMBRE, TELEFONO: f.TELEFONO, CANAL: f.CANAL, TIPO_VEHICULO: f.TIPO_VEHICULO, MODELO: f.MODELO, COLOR: f.COLOR, MOTIVO: f.MOTIVO, ABONO: f.ABONO, TOTAL: f.TOTAL } }); }) });
       if (o.accion === 'enviarInforme') { var ie = mockInf(o.id); ie.final = o.datos; ie.TEXTO_FINAL = o.texto; ie.REVISO = us; ie.FECHA_ENVIO = hoyISO() + ' 10:00'; var sin = !o.datos.items.length; ie.ESTADO = sin ? 'RESPONDIDO' : 'ENVIADO'; if (sin) ie.respuesta = []; mockFila(ie.NUMERO).ETAPA = sin ? 'APROBADO' : 'ESPERANDO CLIENTE'; return res({ ok: true, etapa: mockFila(ie.NUMERO).ETAPA }); }
-      if (o.accion === 'respuesta') { var ir = mockInf(o.id); ir.respuesta = o.aprobados; ir.ESTADO = 'RESPONDIDO'; mockFila(ir.NUMERO).AVISO_TECNICO = o.avisoTecnico || ''; mockFila(ir.NUMERO).AVISO_TECNICO_ENVIADO = ''; var todos = mockAprob(ir.NUMERO); var fr2 = mockFila(ir.NUMERO); fr2.ETAPA = todos.length ? 'APROBADO' : 'NO APROBADO'; fr2.COBRO_REVISION = todos.length ? '' : '60000'; fr2.ITEMS_APROBADOS = JSON.stringify(todos); return res({ ok: true, etapa: fr2.ETAPA, aprobados: todos, valorRevision: 60000 }); }
+      if (o.accion === 'respuesta') { var ir = mockInf(o.id); ir.respuesta = o.aprobados; ir.ESTADO = 'RESPONDIDO'; mockFila(ir.NUMERO).OBS_TECNICO = o.observacion ? o.observacion + ' (' + us + ', hoy)' : ''; mockFila(ir.NUMERO).AVISO_TECNICO = o.avisoTecnico || ''; mockFila(ir.NUMERO).AVISO_TECNICO_ENVIADO = ''; var todos = mockAprob(ir.NUMERO); var fr2 = mockFila(ir.NUMERO); fr2.ETAPA = todos.length ? 'APROBADO' : 'NO APROBADO'; fr2.COBRO_REVISION = todos.length ? '' : '60000'; fr2.ITEMS_APROBADOS = JSON.stringify(todos); return res({ ok: true, etapa: fr2.ETAPA, aprobados: todos, valorRevision: 60000 }); }
       if (o.accion === 'devolverInforme') { var iv = mockInf(o.id); if (iv.ESTADO !== 'POR REVISAR') return rej(new Error('Este informe ya se le envió al cliente: no se puede devolver.')); iv.ESTADO = 'DEVUELTO'; iv.DEVOLUCIONES = (iv.DEVOLUCIONES ? iv.DEVOLUCIONES + '\n' : '') + hoyISO() + ' 11:00 ' + us + ': ' + o.motivo; var fv = mockFila(iv.NUMERO); fv.INFORME_DEVUELTO = o.motivo + ' (' + us + ', hoy)'; fv.AVISO_SERVICIO = ''; fv.ETAPA = iv.original.hallazgo ? 'APROBADO' : 'EN TALLER'; return res({ ok: true, numero: iv.NUMERO, tecnico: iv.TECNICO }); }
       if (o.accion === 'iniciarSubida' || o.accion === 'subirParte') { mockPartes(o).then(res, rej); return; }
       if (o.accion === 'fotosFin') { var ff = mockFila(o.numero)._fin || []; return ff[o.k] ? res({ ok: true, total: ff.length, foto: ff[o.k] }) : rej(new Error('Foto no encontrada')); }
@@ -754,7 +763,7 @@ function mockAprob(n, hasta) { var out = []; mock.infs.forEach(function (x) { if
 function mockTec(o, tq, res, rej) {
   if (o.accion === 'login') return res({ ok: true, usuario: tq, rol: 'tecnico', waServicio: '3003479102' });
   if (o.accion === 'misOrdenes') return res({ ok: true, ordenes: mock.filas.filter(function (f) { return f.TECNICO === tq && f.ESTADO !== 'ANULADA' && f.ETAPA !== 'TURNO'; }).map(function (f) {
-    return { AVISO_SERVICIO: f.AVISO_SERVICIO, AVISO_SERVICIO_ENVIADO: f.AVISO_SERVICIO_ENVIADO, NUMERO: f.NUMERO, FECHA: f.FECHA, CLIENTE: f.NOMBRE, TIPO_VEHICULO: f.TIPO_VEHICULO, MODELO: f.MODELO, COLOR: f.COLOR, MOTOR_CHASIS: f.MOTOR_CHASIS, MOTIVO: f.MOTIVO, ESTADO_FISICO: f.ESTADO_FISICO, ELEMENTOS: f.ELEMENTOS, COTIZACION: f.COTIZACION, ITEMS: f.ITEMS, TOTAL: f.TOTAL, ABONO: f.ABONO, ETAPA: f.ETAPA, INFORME_DEVUELTO: f.INFORME_DEVUELTO || '', INFORME_AVANCE: f.INFORME_AVANCE || '', NUM_FOTOS_FIN: (f._fin || []).length,
+    return { AVISO_SERVICIO: f.AVISO_SERVICIO, AVISO_SERVICIO_ENVIADO: f.AVISO_SERVICIO_ENVIADO, NUMERO: f.NUMERO, FECHA: f.FECHA, CLIENTE: f.NOMBRE, TIPO_VEHICULO: f.TIPO_VEHICULO, MODELO: f.MODELO, COLOR: f.COLOR, MOTOR_CHASIS: f.MOTOR_CHASIS, MOTIVO: f.MOTIVO, ESTADO_FISICO: f.ESTADO_FISICO, ELEMENTOS: f.ELEMENTOS, COTIZACION: f.COTIZACION, ITEMS: f.ITEMS, TOTAL: f.TOTAL, ABONO: f.ABONO, ETAPA: f.ETAPA, INFORME_DEVUELTO: f.INFORME_DEVUELTO || '', INFORME_AVANCE: f.INFORME_AVANCE || '', OBS_TECNICO: f.OBS_TECNICO || '', NUM_FOTOS_FIN: (f._fin || []).length,
       informes: mock.infs.filter(function (x) { return x.NUMERO == f.NUMERO; }).map(function (x) { return { ID: x.ID, RONDA: x.RONDA, TIPO: x.TIPO, ESTADO: x.ESTADO, FECHA_TECNICO: x.FECHA_TECNICO, datos: x.final || x.original, respuesta: x.respuesta || null, numFotos: x.fotos.length }; }) };
   }).reverse() });
   if (o.accion === 'guardarInforme') { var f = mockFila(o.numero); if (!f || f.TECNICO !== tq) return rej(new Error('No asignada')); if (f.ETAPA === 'INFORME POR REVISAR' || f.ETAPA === 'ESPERANDO CLIENTE') return rej(new Error('Ya tiene un informe pendiente'));
@@ -1547,9 +1556,13 @@ function pintarComponentes(cont, comps, alCambiar) {
   comps.forEach(function (c) {
     if (c.grupo && c.grupo !== grupo) { grupo = c.grupo; var h = document.createElement('div'); h.className = 'compG'; h.textContent = c.grupo; cont.appendChild(h); }
     var d = document.createElement('div'); d.className = 'comp' + (c.grupo ? ' sub' : '');
-    d.innerHTML = (c.grupo && c.nombre === c.grupo ? '' : '<div class="nom">' + esc(c.nombre) + '</div>') + '<div class="est3' + (c.sinMarca ? ' oculto' : '') + '"><button type="button" data-v="ok">✅ Bien</button><button type="button" data-v="ajuste">⚠️ Ajuste</button><button type="button" data-v="cambio">🔴 Cambio</button></div>' +
+    var frenoLiq = esFreno(c) && c.nombre === 'Líquido de freno', frenoGuaya = esFreno(c) && c.nombre === 'Guaya';
+    d.innerHTML = (c.grupo && c.nombre === c.grupo ? '' : '<div class="nom">' + esc(c.nombre) + (frenoLiq ? ' <span class="nota" style="font-weight:400">(si el freno es de guaya: ➖ No aplica)</span>' : '') + '</div>') +
+      (frenoGuaya ? '<div class="nota guayaAyuda"></div>' : '') +
+      '<div class="est3' + (c.sinMarca ? ' oculto' : '') + (frenoLiq ? ' est4' : '') + '"><button type="button" data-v="ok">✅ Bien</button><button type="button" data-v="ajuste">⚠️ Ajuste</button><button type="button" data-v="cambio">🔴 Cambio</button>' + (frenoLiq ? '<button type="button" data-v="na">➖ No aplica</button>' : '') + '</div>' +
       (c.sinMarca ? '<textarea rows="2" style="min-height:56px;margin-top:6px" placeholder="Nota obligatoria"></textarea>'
-        : '<input type="text" placeholder="' + esc(c.grupo ? 'Nota de ' + c.nombre.toLowerCase() + ' (obligatoria)' : 'Nota obligatoria') + '">');
+        : '<input type="text" placeholder="' + esc(frenoGuaya ? 'Estado, lubricación y cómo se encuentra la guaya (obligatoria)' : c.grupo ? 'Nota de ' + c.nombre.toLowerCase() + ' (obligatoria)' : 'Nota obligatoria') + '">');
+    c._d = d;
     d.querySelectorAll('.est3 button').forEach(function (b) {
       if (b.dataset.v === c.estado) b.classList.add('on');
       b.onclick = function () {
@@ -1557,6 +1570,7 @@ function pintarComponentes(cont, comps, alCambiar) {
         d.querySelectorAll('.est3 button').forEach(function (x) { x.classList.remove('on'); });
         if (estaba) c.estado = ''; else { b.classList.add('on'); c.estado = b.dataset.v; }
         d.classList.remove('mal');
+        if (frenoLiq) sincFreno(comps, c.grupo, true);
         if (alCambiar) alCambiar();
       };
     });
@@ -1564,6 +1578,39 @@ function pintarComponentes(cont, comps, alCambiar) {
     inp.oninput = function () { c.nota = inp.value; d.classList.remove('mal'); if (alCambiar) alCambiar(); };
     cont.appendChild(d);
   });
+  ['Freno delantero', 'Freno trasero'].forEach(function (g) { sincFreno(comps, g, false); });
+}
+/* frenos: hidráulico (con líquido) o de guaya. Líquido "➖ No aplica" → se habilita y se exige la guaya; si lleva líquido, la guaya no aplica */
+var NOTA_SIN_LIQ = 'No lleva líquido de frenos (freno de guaya).', NOTA_SIN_GUAYA = 'Freno hidráulico: no lleva guaya.', NOTA_SIN_BOMBA = 'Freno de guaya: no lleva bomba ni cáliper.';
+function esFreno(c) { return /^Freno (delantero|trasero)$/.test(c.grupo || ''); }
+function sincFreno(comps, grupo, porClic) {
+  var liq = comps.filter(function (c) { return c.grupo === grupo && c.nombre === 'Líquido de freno'; })[0];
+  var gu = comps.filter(function (c) { return c.grupo === grupo && c.nombre === 'Guaya'; })[0];
+  var bo = comps.filter(function (c) { return c.grupo === grupo && c.nombre === 'Bomba y cáliper'; })[0];
+  if (!liq || !gu || !gu._d) return;
+  if (bo && bo._d) {   // freno de guaya: bomba y cáliper no aplican
+    var sinLiq = liq.estado === 'na';
+    if (sinLiq) { bo.bloq = true; bo.estado = 'na'; bo.nota = NOTA_SIN_BOMBA; bo._d.querySelector('input').value = NOTA_SIN_BOMBA; }
+    else if (bo.bloq) { bo.bloq = false; if (bo.estado === 'na') bo.estado = ''; if (bo.nota === NOTA_SIN_BOMBA) { bo.nota = ''; bo._d.querySelector('input').value = ''; } }
+    bo._d.classList.toggle('bloq', !!bo.bloq); bo._d.classList.remove('mal');
+    bo._d.querySelectorAll('.est3 button').forEach(function (b) { b.disabled = !!bo.bloq; b.classList.toggle('on', b.dataset.v === bo.estado); });
+    bo._d.querySelector('input').disabled = !!bo.bloq;
+  }
+  var d = gu._d, inp = d.querySelector('input'), ay = d.querySelector('.guayaAyuda');
+  function ponerNota(c, txt) { c.nota = txt; if (c._d) c._d.querySelector('input').value = txt; }
+  if (liq.estado === 'na') {
+    if (porClic && !String(liq.nota || '').trim()) ponerNota(liq, NOTA_SIN_LIQ);
+    if (gu.bloq) { gu.bloq = false; if (gu.estado === 'na') gu.estado = ''; if (gu.nota === NOTA_SIN_GUAYA) ponerNota(gu, ''); }
+    ay.textContent = 'Freno de guaya: revise el estado, la lubricación y cómo se encuentra la guaya.';
+  } else {
+    if (porClic && liq.nota === NOTA_SIN_LIQ) ponerNota(liq, '');
+    gu.bloq = true;
+    if (liq.estado) { gu.estado = 'na'; ponerNota(gu, NOTA_SIN_GUAYA); ay.textContent = 'Freno hidráulico (lleva líquido): la guaya no aplica.'; }
+    else { if (gu.estado === 'na' || !gu.estado) { gu.estado = ''; if (gu.nota === NOTA_SIN_GUAYA) ponerNota(gu, ''); } ay.textContent = 'Primero marque Líquido de freno. Si el freno no lleva líquido, marque ➖ No aplica y aquí revisa la guaya.'; }
+  }
+  d.classList.toggle('bloq', !!gu.bloq); d.classList.remove('mal');
+  d.querySelectorAll('.est3 button').forEach(function (b) { b.disabled = !!gu.bloq; b.classList.toggle('on', b.dataset.v === gu.estado); });
+  inp.disabled = !!gu.bloq;
 }
 /* cotización: una tarjeta por ítem con Código · Concepto · Cantidad · Valor unitario · Total (el código es libre: MDO, P-32, R-0062…) */
 /* opciones de cotización: cada ítem puede llevar op = 1, 2, 3 (el cliente escoge una). Sin op = cotización única */
@@ -1646,6 +1693,7 @@ function validarInforme(contItems, itemsCrudos, contComps, comps, tipo, desc, ha
     var malNota = false, sinEstado = false;
     contComps.querySelectorAll('.comp').forEach(function (d, k) {
       var c = comps[k], nota = String(c.nota || '').trim(), mal = false;
+      if (c.bloq) { d.classList.remove('mal'); return; }   // guaya de un freno hidráulico (o pendiente de marcar el líquido)
       if (!c.estado && !c.sinMarca) { mal = true; sinEstado = true; }   // todos llevan marca (menos Limpieza)
       if (nota.length < (c.grupo ? NOTA_MIN_SUB : 10)) { mal = true; malNota = true; }   // y nota en cada uno
       d.classList.toggle('mal', mal);
@@ -1659,7 +1707,7 @@ function validarInforme(contItems, itemsCrudos, contComps, comps, tipo, desc, ha
 }
 function limpiarComps(l) {
   return (l || []).filter(function (c) { return c.estado || String(c.nota || '').trim(); })
-    .map(function (c) { var o = { nombre: c.nombre, estado: c.sinMarca ? '' : (c.estado || ''), nota: String(c.nota || '').trim() }; if (c.grupo) o.grupo = c.grupo; return o; });
+    .map(function (c) { var o = { nombre: c.nombre, estado: c.sinMarca ? '' : (c.estado || ''), nota: String(c.nota || '').trim() }; if (c.grupo) o.grupo = c.grupo; return o; });   // (sin _d ni bloq)
 }
 function compsCompletos(guardados) {   // todos los subcomponentes de la plantilla, con lo que ya se haya marcado
   guardados = guardados || [];
@@ -1726,13 +1774,14 @@ function avisarTecnico(nombre, texto) {
   if (!cel) { alert('No hay celular para ' + (nombre || 'el técnico') + '. Escríbalo en la hoja TECNICOS (columna B) del Google Sheet.'); return false; }
   waA(cel, texto); return true;
 }
-function msgTecRespuesta(inf, ap, etapa) {
+function msgTecRespuesta(inf, ap, etapa, obs) {
   var it = (inf.datos && inf.datos.items) || [], si = it.filter(function (x, k) { return ap[k]; }), no = it.filter(function (x, k) { return !ap[k]; });
   var L = ['🔧 *Orden No. ' + ordNom(inf.NUMERO, inf.orden.NOMBRE) + '* – respuesta del cliente', '🔹 Vehículo: ' + [inf.orden.TIPO_VEHICULO, inf.orden.MODELO, inf.orden.COLOR].filter(Boolean).join(' ')];
   if (si.length) { L.push('', '✅ AUTORIZADO, puede avanzar:'); si.forEach(function (i) { L.push('• ' + linItem(i, false)); }); }
   if (no.length) { L.push('', '❌ NO autorizado, no lo haga:'); no.forEach(function (i) { L.push('• ' + linItem(i, false)); }); }
   if (etapa === 'NO APROBADO') L.push('', 'El cliente no autorizó la reparación. No haga trabajos: deje el vehículo armado y listo para entrega.');
   if (etapa === 'APROBADO' && !si.length && (inf.previos || []).length) L.push('', 'Siga solo con lo que el cliente ya había autorizado antes.');
+  if (obs) L.push('', '📝 *Observación:* ' + obs);
   L.push('', 'Detalle en la app › Mis órdenes: ' + appUrl());
   return L.join('\n');
 }
@@ -1757,6 +1806,7 @@ function cargarMis() {
         '<div class="nota">Cliente: ' + esc(titulo(o.CLIENTE)) + ' · Ingresó ' + esc(o.FECHA) + (o.MOTOR_CHASIS ? ' · N° motor ' + esc(o.MOTOR_CHASIS) : '') + '</div>' +
         '<div style="font-size:14px;margin-top:6px"><b>Motivo:</b> ' + esc(o.MOTIVO) + '</div>' +
         htmlCotizIngreso(o) +
+        (o.OBS_TECNICO && ['APROBADO', 'NO APROBADO', 'TERMINADO', 'LISTO PARA ENTREGA'].indexOf(o.ETAPA) >= 0 ? '<div class="estado-box" style="background:#ede7f6;color:#3c2a6b;border:2px solid #b39ddb"><b>📝 Observación de servicio técnico</b><br>' + esc(String(o.OBS_TECNICO).replace(/\s*\([^()]*\)\s*$/, '')) + '</div>' : '') +
         ((o.informes || []).some(function (i) { return i.ESTADO === 'BORRADOR'; }) && !o.INFORME_DEVUELTO ? '<div class="estado-box" style="background:#e6f1fb;color:#0c447c;border:2px solid #85b7eb"><b>📝 Informe en progreso</b> · guardado ' + esc(String(((o.informes || []).filter(function (i) { return i.ESTADO === 'BORRADOR'; })[0] || {}).FECHA_TECNICO || '').replace(/^\'/, '')) + '<br><span style="font-size:13px">Todavía NO se ha enviado a revisión. Toque ✏️ Continuar para terminarlo.</span></div>' : '') +
         (o.INFORME_DEVUELTO ? '<div class="estado-box" style="background:#fde7e7;color:#a32d2d;border:2px solid #f09595"><b>↩️ Informe devuelto para corregir</b><br>' + esc(String(o.INFORME_DEVUELTO).replace(/\s*\([^()]*\)\s*$/, '')) + '<br><span style="font-size:13px">Toque ✏️ Corregir informe: le aparece lo que ya había llenado.</span></div>'
           : '<div class="estado-box" style="background:' + x[1] + ';color:' + x[2] + '">' + esc(x[3]) + '</div>') +
@@ -2290,7 +2340,7 @@ function abrirRespuesta(inf) {
     d.querySelectorAll('.seg button').forEach(function (b) { b.onclick = function () { S.rp.ap[k] = b.dataset.v === 'si'; pintarResp(); }; });
     c.appendChild(d);
   });
-  $('errRp').textContent = '';
+  $('errRp').textContent = ''; $('rpObs').value = '';
   S.rp.avisado = false; $('btnRpTec').textContent = '📲 Avisar al técnico';
   mostrar('rpForm', true); mostrar('rpFin', false); pintarResp(); mostrar('mResp', true);
 }
@@ -2304,6 +2354,10 @@ function pintarResp() {
   var nada = S.rp.ap.length && S.rp.ap.every(function (x) { return x === false; }), prev = (S.rp.inf.previos || []).length;
   $('rpRevision').innerHTML = nada ? (prev ? 'No autorizó lo nuevo: el técnico sigue solo con lo que ya estaba autorizado.' : '<b style="color:var(--rojo)">No autorizó nada:</b> se cobra la revisión de ' + fmt(S.valorRev || 60000) + ' (queda anotado en la orden) y el técnico deja el vehículo armado para entrega.') : '';
 }
+$('btnRpObsRep').onclick = function () {
+  var t = 'El cliente trae los repuestos para instalarlos (no los tenemos). Instálelos cuando los traiga y revise que sean los correctos.';
+  $('rpObs').value = $('rpObs').value.trim() ? $('rpObs').value.trim() + ' ' + t : t;
+};
 $('btnRpTodo').onclick = function () { S.rp.ap = S.rp.ap.map(function () { return true; }); pintarResp(); };
 $('btnRpNada').onclick = function () { S.rp.ap = S.rp.ap.map(function () { return false; }); pintarResp(); };
 $('btnRpCancelar').onclick = function () { mostrar('mResp', false); };
@@ -2312,13 +2366,13 @@ $('btnRpGuardar').onclick = function () {
   if (R.ap.some(function (x) { return x === null; })) { $('errRp').textContent = 'Marque ✅ o ❌ en cada ítem.'; return; }
   $('errRp').textContent = ''; var btn = this; btn.disabled = true;
   var etapaPrev = R.ap.some(function (x) { return x; }) || (R.inf.previos || []).length ? 'APROBADO' : 'NO APROBADO';
-  var paso = R.guardado ? Promise.resolve(R.guardado) : api({ accion: 'respuesta', id: R.inf.ID, aprobados: R.ap, avisoTecnico: msgTecRespuesta(R.inf, R.ap, etapaPrev) }).then(function (r) { R.guardado = r; return r; });
+  var paso = R.guardado ? Promise.resolve(R.guardado) : api({ accion: 'respuesta', id: R.inf.ID, aprobados: R.ap, observacion: $('rpObs').value.trim(), avisoTecnico: msgTecRespuesta(R.inf, R.ap, etapaPrev, $('rpObs').value.trim()) }).then(function (r) { R.guardado = r; return r; });
   paso.then(function (r) {
     btn.disabled = false;
     var x = ETQ[r.etapa];
     $('rpFinTxt').style.background = x[1]; $('rpFinTxt').style.color = x[2];
     $('rpFinTxt').innerHTML = '<b>Orden ' + R.inf.NUMERO + ': ' + x[0] + '</b><br>' + (r.etapa === 'NO APROBADO' ? 'Se anotó el cobro de la revisión (' + fmt(r.valorRevision || S.valorRev) + ').' : 'Total autorizado de la orden: ' + fmt(sumaItems(r.aprobados))) + '<br>Ahora avísele al técnico.';
-    R.msgTec = msgTecRespuesta(R.inf, R.ap, r.etapa);
+    R.msgTec = msgTecRespuesta(R.inf, R.ap, r.etapa, $('rpObs').value.trim());
     mostrar('rpForm', false); mostrar('rpFin', true);
   }).catch(function (e) {
     btn.disabled = false;
