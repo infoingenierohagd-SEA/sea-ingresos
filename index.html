@@ -284,7 +284,7 @@
         <button class="btn sec" id="btnVideo" type="button">🎥 Video</button>
         <button class="btn sec" id="btnGaleria" type="button">🖼️ Galería</button>
       </div>
-      <div class="nota">Si la cámara desde la app se demora, tome las fotos o videos con la cámara normal del celular y súbalos con 🖼️ Galería (puede elegir varios a la vez). Videos de máximo 60 MB (más o menos 2 minutos).</div>
+      <div class="nota">Si la cámara desde la app se demora, tome las fotos o videos con la cámara normal del celular y súbalos con 🖼️ Galería (puede elegir varios a la vez). Videos de hasta 300 MB (más o menos 2 a 3 minutos). Los videos largos tardan unos minutos en subir: no cierre la app.</div>
       <input id="inCamara" type="file" accept="image/*" capture="environment" class="oculto">
       <input id="inVideo" type="file" accept="video/*" capture="environment" class="oculto">
       <input id="inGaleria" type="file" accept="image/*,video/*" multiple class="oculto">
@@ -470,7 +470,7 @@
         <button class="btn sec" id="btnInfVid" type="button">🎥 Video</button>
         <button class="btn sec" id="btnInfGal" type="button">🖼️ Galería</button>
       </div>
-      <div class="nota">Si la cámara desde la app se demora, tómelas con la cámara normal del celular y súbalas con 🖼️ Galería. Videos de máximo 60 MB (más o menos 2 minutos).</div>
+      <div class="nota">Si la cámara desde la app se demora, tómelas con la cámara normal del celular y súbalas con 🖼️ Galería.</div><div class="avVid" style="margin-top:8px;background:#fff6e0;border:1px solid #f0c36d;border-radius:10px;padding:10px 12px;font-size:14.5px;line-height:1.45;color:#5a4300"><b>🎥 Antes de grabar videos:</b><br>• Ponga la cámara del celular en <b>1080p y 30 fps</b> (no 4K ni 60 fps): el video pesa menos de la mitad.<br>• Máximo <b>300 MB</b> por video (más o menos 2 a 3 minutos). Si es más largo, grábelo en dos partes.<br>• Un video de 1 minuto tarda 2 o 3 minutos en subir con datos: <b>no cierre la app ni bloquee el celular</b> hasta que termine. Con wifi sube más rápido.</div>
       <input id="inInfCam" type="file" accept="image/*" capture="environment" class="oculto">
       <input id="inInfVid" type="file" accept="video/*" capture="environment" class="oculto">
       <input id="inInfGal" type="file" accept="image/*,video/*" multiple class="oculto">
@@ -581,7 +581,7 @@
   <label style="margin-top:12px">📸 Fotos y videos de cómo quedó el vehículo <span id="fnObl"></span></label>
   <div class="nota" id="fnAyuda"></div>
   <div class="fila"><button class="btn sec" id="btnFnCam" type="button">📷 Foto</button><button class="btn sec" id="btnFnVid" type="button">🎥 Video</button><button class="btn sec" id="btnFnGal" type="button">🖼️ Galería</button></div>
-  <div class="nota">Si la cámara desde la app se demora, use la cámara normal del celular y súbalas con 🖼️ Galería.</div>
+  <div class="nota">Si la cámara desde la app se demora, use la cámara normal del celular y súbalas con 🖼️ Galería.</div><div class="avVid" style="margin-top:8px;background:#fff6e0;border:1px solid #f0c36d;border-radius:10px;padding:10px 12px;font-size:14.5px;line-height:1.45;color:#5a4300"><b>🎥 Antes de grabar videos:</b><br>• Ponga la cámara del celular en <b>1080p y 30 fps</b> (no 4K ni 60 fps): el video pesa menos de la mitad.<br>• Máximo <b>300 MB</b> por video (más o menos 2 a 3 minutos). Si es más largo, grábelo en dos partes.<br>• Un video de 1 minuto tarda 2 o 3 minutos en subir con datos: <b>no cierre la app ni bloquee el celular</b> hasta que termine. Con wifi sube más rápido.</div>
   <input id="inFnCam" type="file" accept="image/*" capture="environment" class="oculto">
   <input id="inFnVid" type="file" accept="video/*" capture="environment" class="oculto">
   <input id="inFnGal" type="file" accept="image/*,video/*" multiple class="oculto">
@@ -913,15 +913,15 @@ $('btnCamara').onclick = function () { $('inCamara').click(); };
 $('btnGaleria').onclick = function () { $('inGaleria').click(); };
 $('btnVideo').onclick = function () { $('inVideo').click(); };
 $('inVideo').onchange = function () { recibirArchivos(this.files); this.value = ''; };
-var MAX_VIDEO = 60 * 1024 * 1024, PARTE = 4 * 1024 * 1024, GRANDE = 4 * 1024 * 1024;   // todo lo que pase de 4 MB va por partes: más seguro con datos móviles
+var MAX_VIDEO = 300 * 1024 * 1024, PARTE = 4 * 1024 * 1024, PARTE_XL = 8 * 1024 * 1024, GRANDE = 4 * 1024 * 1024;   // todo lo que pase de 4 MB va por partes: más seguro con datos móviles
 /* sube un archivo: normal si es liviano; por partes de 4 MB (directo a Drive) si pesa más de 4 MB. extra = numero, nombre, mime, informe/esFin */
 function subirMedio(extra, file, alAvanzar) {
   if ((file.size || 0) <= GRANDE) return b64(file).then(function (x) { return api(Object.assign({ accion: 'subir', b64: x }, extra)); });
   return api(Object.assign({ accion: 'iniciarSubida', tam: file.size }, extra)).then(function (r) {
-    var ini = 0;
+    var ini = 0, tamParte = file.size > 40 * 1024 * 1024 ? PARTE_XL : PARTE;   // videos largos: partes de 8 MB (menos viajes)
     function parte(intento) {
       if (ini >= file.size) return Promise.resolve();
-      var pedazo = file.slice(ini, Math.min(file.size, ini + PARTE));
+      var pedazo = file.slice(ini, Math.min(file.size, ini + tamParte));
       if (alAvanzar) alAvanzar(ini / file.size);
       return b64(pedazo).then(function (x) { return api({ accion: 'subirParte', token: r.token, inicio: ini, b64: x }); })
         .then(function (rr) { ini += pedazo.size; if (rr.fin) ini = file.size; return parte(0); },
@@ -931,7 +931,7 @@ function subirMedio(extra, file, alAvanzar) {
   });
 }
 function esVideoF(f) { return /^video\//.test(f.type || '') || /\.(mp4|mov|3gp|webm|mkv)$/i.test(f.name || ''); }
-/* agrega fotos (comprimidas) y videos (tal cual, máx. 60 MB) a una lista; avisa los videos muy pesados */
+/* agrega fotos (comprimidas) y videos (tal cual, máx. 300 MB) a una lista; avisa los videos muy pesados */
 function agregarMedios(lista, destino) {
   var pesados = [];
   Array.prototype.forEach.call(lista, function (f) {
@@ -939,7 +939,7 @@ function agregarMedios(lista, destino) {
     if (v && f.size > MAX_VIDEO) { pesados.push((f.name || 'video') + ' (' + Math.round(f.size / 1048576) + ' MB)'); return; }
     destino.push({ file: f, video: v, url: URL.createObjectURL(f), listo: v ? Promise.resolve(f) : comprimir(f) });
   });
-  if (pesados.length) alert('Estos videos pesan más de 60 MB y no se pueden subir:\n' + pesados.join('\n') + '\n\nGrábelos más cortos (más o menos 2 minutos) o en dos partes.');
+  if (pesados.length) alert('Estos videos pesan más de 300 MB y no se pueden subir:\n' + pesados.join('\n') + '\n\nGrábelos más cortos o en dos partes (o en la cámara baje la calidad a 1080p / 30 fps).');
 }
 function miniatura(a) { return a.video ? '<video src="' + a.url + '" muted></video><span class="tag">video</span>' : '<img src="' + a.url + '">'; }
 function nombreMedio(base, f, k) { var v = esVideoF(f); return base.replace('{T}', v ? 'Video' : 'Foto') + String(k).padStart(2, '0') + (v ? ((f.name || '').match(/\.\w+$/) || ['.mp4'])[0].toLowerCase() : '.jpg'); }
@@ -1168,7 +1168,7 @@ function abrirListo(P) {
   $('btnAcepto').disabled = false; $('btnAcepto').textContent = '✓ El cliente respondió ACEPTO';
   var hayFotos = (P.files || []).length > 0;
   var grandes = Object.keys(P.subidos || {}).filter(function (k) { return P.subidos[k] === 'grande'; }).length;
-  $('avisoVideo').textContent = grandes ? grandes + ' video(s) muy pesado(s) (más de 60 MB) no se guardaron en Drive: compártalos por WhatsApp y quedan solo en el celular.' : '';
+  $('avisoVideo').textContent = grandes ? grandes + ' video(s) muy pesado(s) (más de 300 MB) no se guardaron en Drive: compártalos por WhatsApp y quedan solo en el celular.' : '';
   mostrar('avisoVideo', grandes > 0);
   mostrar('btnWaFotos', hayFotos); $('btnWaFotos').parentNode.parentNode.classList.toggle('oculto', !hayFotos);
   var tec = P.datos.tecnico; $('pt').classList.remove('ok');
