@@ -1317,13 +1317,15 @@ $('btnWaChat').onclick = function () {
   var P = S.ultima; $('p1').classList.add('ok'); marcarEnvioCliente(P.numero);
   window.open('https://api.whatsapp.com/send?phone=' + telWa(P.datos.telefono) + '&text=' + encodeURIComponent(mensaje(P)), '_blank');
 };
-/* grupos de máx. 5 archivos y ~15 MB: con muchas fotos o videos, el celular rechaza compartirlos todos de una vez */
-function unoAUno() { try { return localStorage.getItem('sea_share1') === '1'; } catch (e) { return false; } }
+/* Grupos para compartir: Chrome deja máximo 10 archivos y ~50 MB por envío. Se empieza con 10 por grupo;
+   si un celular rechaza el grupo dos veces, ese celular baja a la mitad (10 → 5 → 2 → 1) y lo recuerda. */
+function maxGrupo() { try { var v = Number(localStorage.getItem('sea_shareMax')); return v >= 1 && v <= 10 ? v : 10; } catch (e) { return 10; } }
+function bajarGrupo() { var m = maxGrupo(), n = m > 5 ? 5 : m > 2 ? 2 : 1; try { localStorage.setItem('sea_shareMax', String(n)); localStorage.removeItem('sea_share1'); } catch (e) {} return n; }
 function lotesArchivos(files) {
-  var out = [], cur = [], sz = 0, max = unoAUno() ? 1 : 5;   // si el celular rechazó varias juntas, se comparten de a una
+  var out = [], cur = [], sz = 0, max = maxGrupo();
   (files || []).forEach(function (f) {
     var t = f.size || 0;
-    if (cur.length && (cur.length >= max || sz + t > 15e6)) { out.push(cur); cur = []; sz = 0; }
+    if (cur.length && (cur.length >= max || sz + t > 45e6)) { out.push(cur); cur = []; sz = 0; }
     cur.push(f); sz += t;
   });
   if (cur.length) out.push(cur);
@@ -1333,19 +1335,25 @@ function txtGrupos(files) { var n = lotesArchivos(files).length; return n > 1 ? 
 function compartir(files, texto, paso, btnId) {
   S.colas = S.colas || {};
   var q = S.colas[paso];
-  if (!q || q.src !== files) q = S.colas[paso] = { src: files, lotes: lotesArchivos(files), i: 0, label: btnId && $(btnId) ? $(btnId).textContent.replace(/ \(grupo.*$| ✓$/, '') : '' };
+  if (!q || q.src !== files) q = S.colas[paso] = { src: files, lotes: lotesArchivos(files), i: 0, fallo: 0, label: btnId && $(btnId) ? $(btnId).textContent.replace(/ \((grupo|reintentar).*$| ✓$/, '') : '' };
   var n = q.lotes.length, lote = q.lotes[q.i] || [];
+  function rotulo() { if (btnId) $(btnId).textContent = q.label + (n > 1 ? ' (grupo ' + (q.i + 1) + ' de ' + n + ')' : ''); }
   function avanzar() {
-    q.i++;
+    q.i++; q.fallo = 0;
     if (q.i >= n) { $(paso).classList.add('ok'); if (btnId) $(btnId).textContent = q.label + ' ✓'; delete S.colas[paso]; }
-    else if (btnId) $(btnId).textContent = q.label + ' (grupo ' + (q.i + 1) + ' de ' + n + ')';
+    else rotulo();
   }
-  compartirLote(lote, paso, avanzar, function () {   // el celular rechazó varias juntas: desde ahora de a una
-    try { localStorage.setItem('sea_share1', '1'); } catch (e) {}
-    var hechos = q.lotes.slice(0, q.i).reduce(function (a, l) { return a + l.length; }, 0);
-    q.lotes = lotesArchivos(files.slice(hechos)); q.i = 0; n = q.lotes.length;
-    if (btnId) $(btnId).textContent = q.label + ' (1 de ' + n + ')';
-    alert('Este celular no deja compartir varias fotos juntas. Desde ahora se envían de a una:\n\nToque otra vez el botón "' + q.label + '" (' + n + ' veces) y elija el chat del cliente cada vez.');
+  compartirLote(lote, paso, avanzar, function (e) {
+    // el celular rechazó este grupo: la primera vez se reintenta igual; la segunda, grupos más pequeños desde aquí
+    q.fallo++;
+    if (q.fallo === 1) {
+      if (btnId) $(btnId).textContent = q.label + ' (reintentar grupo ' + (q.i + 1) + ' de ' + n + ')';
+      alert('No se pudo enviar el grupo ' + (q.i + 1) + ' de ' + n + ' (' + ((e && e.name) || 'error') + ').\n\nNo se perdió nada: toque otra vez "' + q.label + '" para reintentar este mismo grupo.');
+      return;
+    }
+    var m = bajarGrupo(), hechos = q.lotes.slice(0, q.i).reduce(function (a, l) { return a + l.length; }, 0);
+    q.lotes = lotesArchivos(files.slice(hechos)); q.i = 0; q.fallo = 0; n = q.lotes.length; rotulo();
+    alert('Este celular no deja enviar ' + lote.length + ' archivos juntos. Ahora se envían de a ' + m + '.\n\nToque otra vez "' + q.label + '" (' + n + (n === 1 ? ' vez' : ' veces') + ').');
   });
 }
 function compartirLote(files, paso, alTerminar, deAUna) {
@@ -1361,7 +1369,7 @@ function compartirLote(files, paso, alTerminar, deAUna) {
     navigator.share(data).then(function () { alTerminar(); })
       .catch(function (e) {
         if (e.name === 'AbortError') return;
-        if (e.name === 'NotAllowedError' && files.length > 1 && deAUna) return deAUna();   // probar de a una antes de descargar
+        if (files.length > 1 && deAUna) return deAUna(e);   // reintentar el grupo y, si vuelve a fallar, grupos más pequeños
         respaldo('Este equipo no permitió compartir directamente (' + (e.name || 'error') + (files.length > 1 ? ', ' + files.length + ' archivos' : '') + ').\n\nTambién puede abrirlas desde Órdenes › Fotos (carpeta de Drive) y compartirlas desde la app de Drive.');
       });
   } else {
@@ -2399,7 +2407,7 @@ function textosIA() {
 function promptIA(t) {
   return 'Corrige la ortografía, la puntuación y la redacción de estos textos de un informe técnico de un taller de motos, scooters y bicicletas eléctricas, para que el cliente los entienda fácil.\n' +
     'Reglas:\n- No cambies, quites ni agregues datos técnicos, repuestos, medidas, precios, códigos ni cantidades. No inventes nada.\n- Mantén el mismo sentido; frases cortas y claras, tono amable y profesional.\n- No agregues saludos, despedidas ni explicaciones.\n' +
-    '- Responde SOLO con los textos corregidos, cada uno empezando con su misma etiqueta entre corchetes ([D], [N3]...). Lo que va entre paréntesis después de la etiqueta es solo contexto: no lo copies.\n\n' +
+    '- Corrige TODOS los textos, empezando por [D] (trabajos realizados, comentarios y observaciones; puede tener varios párrafos: corrígelos todos).\n- Responde SOLO con los textos corregidos, cada uno empezando con su misma etiqueta entre corchetes ([D], [N3]...). Lo que va entre paréntesis después de la etiqueta es solo contexto: no lo copies.\n\n' +
     t.map(function (x) { return '[' + x.k + ']' + (x.ctx ? ' (' + x.ctx + ')' : '') + ' ' + x.txt; }).join('\n\n');
 }
 function copiarTexto(txt) {
@@ -2408,13 +2416,17 @@ function copiarTexto(txt) {
 }
 function copiarViejo(txt) { var ta = document.createElement('textarea'); ta.value = txt; ta.style.position = 'fixed'; ta.style.opacity = '0'; document.body.appendChild(ta); ta.select(); var ok = false; try { ok = document.execCommand('copy'); } catch (e) {} document.body.removeChild(ta); return ok; }
 function parsearIA(resp) {
-  var out = {}, cur = null;
-  String(resp || '').replace(/\r/g, '').split('\n').forEach(function (l) {
-    var m = /^\s*\**\[(D|N\d+)\]\**\s*(.*)$/.exec(l);
-    if (m) { cur = m[1]; out[cur] = m[2]; return; }
-    if (cur) out[cur] += '\n' + l;
+  // acepta [D], **[D]**, \[D\], [ D ], D:, «[D] (contexto)» y textos de varias líneas
+  var out = {}, cur = null, antes = [];
+  String(resp || '').replace(/\r/g, '').replace(/\\([\[\]])/g, '$1').split('\n').forEach(function (l) {
+    var m = /^\s*[*_#>-]*\s*(?:\[\s*(D|N\s*\d+)\s*\]|(D|N\d+)\s*[:.)-])[*_]*\s*:?\s*(.*)$/i.exec(l);
+    if (m) { cur = String(m[1] || m[2]).toUpperCase().replace(/\s+/g, ''); out[cur] = m[3]; return; }
+    if (cur) out[cur] += '\n' + l; else antes.push(l);
   });
-  Object.keys(out).forEach(function (k) { out[k] = out[k].replace(/^\s*\([^)\n]*\)\s*/, '').trim(); if (!out[k]) delete out[k]; });
+  Object.keys(out).forEach(function (k) { out[k] = out[k].replace(/^\s*\([^)\n]*\)\s*/, '').replace(/^["“”«]|["“”»]$/g, '').trim(); if (!out[k]) delete out[k]; });
+  // si Claude devolvió la descripción sin su etiqueta, al principio, se toma como [D]
+  var pre = antes.join('\n').trim();
+  if (!out.D && pre.length > 40 && !/:\s*$/.test(pre)) out.D = pre;
   return out;
 }
 $('btnIA').onclick = function () {
@@ -2435,18 +2447,20 @@ $('btnIAAplicar').onclick = function () {
   var r = parsearIA($('iaResp').value), n = 0, dt = S.rev.datos;
   if (!Object.keys(r).length) { $('errIA').textContent = 'No encontré la respuesta. Pegue el texto completo de Claude, que empieza con [D].'; return; }
   S.iaAntes = { desc: $('revDesc').value, notas: (dt.componentes || []).map(function (c) { return c.nota; }), texto: $('revTexto').value, editado: S.rev.editado };
+  var faltan = [];
   S.ia.textos.forEach(function (x) {
-    if (!r[x.k]) return;
+    if (!r[x.k]) { faltan.push(x.k === 'D' ? 'Trabajos realizados / observaciones' : x.ctx); return; }
     if (x.k === 'D') $('revDesc').value = r.D;
     else dt.componentes[Number(x.k.slice(1))].nota = r[x.k];
     n++;
   });
-  if (!n) { $('errIA').textContent = 'La respuesta no tiene las etiquetas [D], [N…] del texto copiado.'; return; }
+  if (!n) { $('errIA').textContent = 'La respuesta no tiene las etiquetas [D], [N…] del texto copiado. Pegue la respuesta completa de Claude.'; return; }
   if (dt.tipo === 'mantenimiento') pintarComponentes($('revComps'), dt.componentes, revCambio);
   S.rev.editado = false; revCambio();
   mostrar('btnIADeshacer', true);
   mostrar('mIA', false);
-  alert('✓ Se corrigieron ' + n + (n === 1 ? ' texto' : ' textos') + '. Revise el mensaje para el cliente antes de enviar.');
+  alert('✓ Se corrigieron ' + n + (n === 1 ? ' texto' : ' textos') + (r.D ? ' (incluye Trabajos realizados / observaciones)' : '') + '.' +
+    (faltan.length ? '\n\n⚠️ Claude no devolvió: ' + faltan.join('; ') + '. Esos quedaron como estaban.' : '') + '\n\nRevise el mensaje para el cliente antes de enviar.');
 };
 $('btnIADeshacer').onclick = function () {
   var a = S.iaAntes; if (!a) return;
@@ -2498,18 +2512,28 @@ function abrirEnviarInf(inf, txt, d, etapa) {
   }
   mostrar('mEnviarInf', true);
 }
+/* trae n archivos de a 3 al tiempo (más rápido que de a uno, sin saturar Apps Script); conserva el orden.
+   pedir(k) devuelve una promesa con un File o null (archivo muy pesado). Cada archivo tiene un reintento. */
+function traerVarios(n, pedir, alAvanzar) {
+  var res = new Array(n), sig = 0, hechos = 0, fallas = 0, PARALELO = 3;
+  return new Promise(function (fin) {
+    if (!n) return fin({ files: [], fallas: 0 });
+    function trabajador() {
+      if (sig >= n) return Promise.resolve();
+      var k = sig++;
+      return pedir(k).catch(function () { return new Promise(function (ok) { setTimeout(ok, 800); }).then(function () { return pedir(k); }); })
+        .then(function (f) { res[k] = f || null; if (!f) fallas++; }, function () { res[k] = null; fallas++; })
+        .then(function () { hechos++; if (alAvanzar) alAvanzar(hechos, n); return trabajador(); });
+    }
+    var ts = []; for (var t = 0; t < Math.min(PARALELO, n); t++) ts.push(trabajador());
+    Promise.all(ts).then(function () { fin({ files: res.filter(Boolean), res: res, fallas: fallas }); });
+  });
+}
 /* trae las fotos del informe de a una (con un reintento cada una): con muchas fotos, traerlas todas juntas fallaba ("Failed to fetch") */
 function traerFotosInforme(inf, fin) {
-  var n = inf.numFotos || 0, files = [], fallas = 0, k = 0;
-  function una(intento) {
-    if (k >= n) return fin(files, fallas);
-    $('eiFotosTxt').textContent = 'Preparando foto ' + (k + 1) + ' de ' + n + '…';
-    api({ accion: 'fotosInforme', id: inf.ID, k: k }).then(function (r) {
-      if (r.grande) fallas++; else if (r.foto) files.push(b64aFile(r.foto)); else if (r.fotos && r.fotos[k]) files.push(b64aFile(r.fotos[k]));
-      k++; una(0);
-    }).catch(function () { if (intento < 1) return setTimeout(function () { una(intento + 1); }, 800); fallas++; k++; una(0); });
-  }
-  una(0);
+  traerVarios(inf.numFotos || 0, function (k) {
+    return api({ accion: 'fotosInforme', id: inf.ID, k: k }).then(function (r) { return r.grande ? null : r.foto ? b64aFile(r.foto) : (r.fotos && r.fotos[k]) ? b64aFile(r.fotos[k]) : null; });
+  }, function (h, n) { $('eiFotosTxt').textContent = 'Preparando fotos: ' + h + ' de ' + n + '…'; }).then(function (r) { fin(r.files, r.fallas); });
 }
 $('btnEiWa').onclick = function () { $('e1').classList.add('ok'); waA(S.ei.inf.orden.TELEFONO, S.ei.txt); };
 $('btnEiFotos').onclick = function () { if (S.ei.files && S.ei.files.length) compartir(S.ei.files, '', 'e2', 'btnEiFotos'); };
@@ -2644,17 +2668,13 @@ function abrirEntrega(o) {
   mostrar('enFotosBox', ids.length > 0 && !papel); $('btnEnFotos').textContent = '📸 Compartir fotos del trabajo terminado';
   if (ids.length && !papel) {
     $('btnEnFotos').disabled = true;
-    var files = [], k = 0, fallas = 0;
-    (function una(intento) {
-      if (k >= ids.length) {
-        S.entFin.files = files; $('btnEnFotos').disabled = !files.length;
-        $('enFotosTxt').textContent = files.length ? 'Después de enviar el mensaje, comparta las ' + files.length + ' foto(s) de cómo quedó.' + txtGrupos(files) + (fallas ? ' (' + fallas + ' video(s) pesados o archivos que no se pudieron traer: están en Órdenes › Fotos.)' : '') : 'No se pudieron traer las fotos del trabajo terminado.';
-        return;
-      }
-      $('enFotosTxt').textContent = 'Preparando foto ' + (k + 1) + ' de ' + ids.length + ' del trabajo terminado…';
-      api({ accion: 'fotosFin', numero: o.NUMERO, k: k }).then(function (r) { if (r.grande) fallas++; else files.push(b64aFile(r.foto)); k++; una(0); })
-        .catch(function () { if (intento < 1) return setTimeout(function () { una(1); }, 800); fallas++; k++; una(0); });
-    })(0);
+    traerVarios(ids.length, function (k) {
+      return api({ accion: 'fotosFin', numero: o.NUMERO, k: k }).then(function (r) { return r.grande ? null : b64aFile(r.foto); });
+    }, function (h, n) { $('enFotosTxt').textContent = 'Preparando fotos del trabajo terminado: ' + h + ' de ' + n + '…'; }).then(function (r) {
+      var files = r.files, fallas = r.fallas;
+      S.entFin.files = files; $('btnEnFotos').disabled = !files.length;
+      $('enFotosTxt').textContent = files.length ? 'Después de enviar el mensaje, comparta las ' + files.length + ' foto(s) de cómo quedó.' + txtGrupos(files) + (fallas ? ' (' + fallas + ' video(s) pesados o archivos que no se pudieron traer: están en Órdenes › Fotos.)' : '') : 'No se pudieron traer las fotos del trabajo terminado.';
+    });
   }
   mostrar('mEntrega', true);
 }
@@ -2926,16 +2946,15 @@ function abrirReenvio(o) {
     $('reFotosTxt').textContent = 'Preparando fotos…'; $('rePdfTxt').textContent = 'Preparando PDF…';
     var reNum = o.NUMERO;
     api({ accion: 'archivosIngreso', numero: o.NUMERO, lista: true }).then(function (r) {
-      var l = r.lista || [], fotos = [], pdf = null, fallas = 0, i = 0;
-      return new Promise(function (fin) {
-        (function uno(intento) {
-          if (!S.re || S.re.o.NUMERO !== reNum) return;         // cerró o abrió otra orden
-          if (i >= l.length) return fin({ fotos: fotos, pdf: pdf, omitidos: (r.omitidos || 0), fallas: fallas });
-          $('reFotosTxt').textContent = 'Preparando archivo ' + (i + 1) + ' de ' + l.length + '…';
-          api({ accion: 'archivosIngreso', numero: reNum, k: l[i].k }).then(function (x) {
-            var fl = b64aFile(x.archivo); if (l[i].esPdf) pdf = fl; else fotos.push(fl); i++; uno(0);
-          }).catch(function () { if (intento < 1) return setTimeout(function () { uno(1); }, 800); fallas++; i++; uno(0); });
-        })(0);
+      var l = r.lista || [];
+      return traerVarios(l.length, function (k) {
+        if (!S.re || S.re.o.NUMERO !== reNum) return Promise.resolve(null);   // cerró o abrió otra orden
+        return api({ accion: 'archivosIngreso', numero: reNum, k: l[k].k }).then(function (x) { return b64aFile(x.archivo); });
+      }, function (h, n) { if (S.re && S.re.o.NUMERO === reNum) $('reFotosTxt').textContent = 'Preparando archivos: ' + h + ' de ' + n + '…'; }).then(function (t) {
+        if (!S.re || S.re.o.NUMERO !== reNum) return null;
+        var fotos = [], pdf = null;
+        t.res.forEach(function (f, k) { if (!f) return; if (l[k].esPdf) pdf = f; else fotos.push(f); });
+        return { fotos: fotos, pdf: pdf, omitidos: (r.omitidos || 0), fallas: t.fallas };
       });
     }).then(function (r) {
       if (!r) return;
