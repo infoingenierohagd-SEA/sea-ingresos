@@ -357,7 +357,7 @@
         <button class="btn sec peq" id="btnHoja" style="flex:0 0 auto;width:auto;margin:0;padding:0 12px">📋 Buscar</button></div>
       <div class="nota">Toque “✓ Aceptó” cuando el cliente responda ACEPTO por WhatsApp. Desde el computador: “PDF” abre la orden para imprimir (Ctrl+P). Los enlaces PDF y Fotos solo abren con la cuenta de Google del negocio.</div>
       <label for="filtroEtapa" style="margin-top:10px">Etapa</label>
-      <select id="filtroEtapa"><option value="">Todas</option><option value="EN TALLER">🔧 Por diagnosticar</option><option value="INFORME POR REVISAR">📝 Informe por revisar</option><option value="ESPERANDO CLIENTE">🟡 Esperando al cliente</option><option value="APROBADO">🟢 Aprobado</option><option value="NO APROBADO">🔴 No aprobado</option><option value="TERMINADO">✅ Terminado (avisar entrega)</option><option value="LISTO PARA ENTREGA">📦 Avisado, por recoger</option><option value="ENTREGADO">🏁 Entregado</option><option value="__SINAVISO">🔔 Respuesta del cliente sin avisar al técnico</option><option value="__ENTREGAS">📦 Entregas pendientes (terminadas y avisadas)</option><option value="__SINENVIO">💬 Ingresos sin enviar al cliente</option><option value="__SINCALIF">⭐ Terminadas sin calificar</option></select>
+      <select id="filtroEtapa"><option value="">Todas</option><option value="EN TALLER">🔧 Por diagnosticar</option><option value="INFORME POR REVISAR">📝 Informe por revisar</option><option value="ESPERANDO CLIENTE">🟡 Esperando al cliente</option><option value="APROBADO">🟢 Aprobado</option><option value="NO APROBADO">🔴 No aprobado</option><option value="TERMINADO">✅ Terminado (avisar entrega)</option><option value="LISTO PARA ENTREGA">📦 Avisado, por recoger</option><option value="ENTREGADO">🏁 Entregado</option><option value="__SINAVISO">🔔 Respuesta del cliente sin avisar al técnico</option><option value="__ENTREGAS">📦 Entregas pendientes (terminadas y avisadas)</option><option value="__SINENVIO">💬 Ingresos sin enviar al cliente</option><option value="__OBSRESP">💬 Respuestas del técnico sin leer</option><option value="__SINCALIF">⭐ Terminadas sin calificar</option></select>
       <label class="check" style="margin-top:8px"><input type="checkbox" id="soloTurnos"><span>Mostrar solo los turnos pendientes (vehículo aún no llega)</span></label>
       <input type="checkbox" id="soloFaltan" class="oculto">
       <div id="lista"><div class="nota">Cargando…</div></div>
@@ -639,6 +639,16 @@
   <div class="err" id="errMt"></div>
 </div></div>
 
+<div id="mRespObs" class="modal oculto"><div class="card">
+  <h3 id="roTitulo">💬 Responder a servicio técnico</h3>
+  <div id="roPrev"></div>
+  <label for="roTxt">Su respuesta</label>
+  <textarea id="roTxt" style="min-height:90px" placeholder="Ej. Listo, no se cambió el rin; se ajustaron los radios."></textarea>
+  <div class="nota">Queda guardada en la orden y se abre el WhatsApp de servicio técnico para avisarle a Alexander.</div>
+  <div id="errRo" class="err"></div>
+  <button class="btn wa" id="btnRoOk">📲 Enviar respuesta</button>
+  <button class="btn sec peq" id="btnRoNo">Cancelar</button>
+</div></div>
 <div id="mObs" class="modal oculto"><div class="card">
   <h3 id="obsTitulo">📝 Observación para el técnico</h3>
   <div class="nota" id="obsSub"></div>
@@ -794,7 +804,9 @@ function mockApi(o) {
       if (o.accion === 'fotosInforme') { var fz = mockInf(o.id).fotos; if (o.k !== undefined) return fz[o.k] ? res({ ok: true, total: fz.length, foto: fz[o.k] }) : rej(new Error('Foto no encontrada')); return res({ ok: true, fotos: fz }); }
       if (o.accion === 'historial') { var qm = normMotor(o.q), qd = String(o.q).replace(/\D/g, ''); return res({ ok: true, diasGarantia: 5, ordenes: mock.filas.slice().reverse().filter(function (f) { return String(f.NUMERO) !== String(o.excluir) && ((qm.length >= 4 && normMotor(f.MOTOR_CHASIS) === qm) || (qd.length >= 7 && String(f.TELEFONO).slice(-10) === qd.slice(-10))); }).map(function (f) { var g = ''; if (f.FECHA_ENTREGA) { var dg = new Date(f.FECHA_ENTREGA.slice(0, 10) + 'T12:00'); dg.setDate(dg.getDate() + 5); g = dg.toISOString().slice(0, 10); } return Object.assign({}, f, { MOTOR: f.MOTOR_CHASIS, GARANTIA_HASTA: g, por: normMotor(f.MOTOR_CHASIS) === qm ? 'motor' : 'celular' }); }) }); }
       if (o.accion === 'avisoEntrega') { var fa = mockFila(o.numero); if (fa.ETAPA !== 'LISTO PARA ENTREGA') { fa.ETAPA = 'LISTO PARA ENTREGA'; fa.FECHA_AVISO_ENTREGA = o.fechaPrueba || (hoyISO() + ' 10:00'); } return res({ ok: true }); }
-      if (o.accion === 'obsTecnico') { var fo = mockFila(o.numero); if (String(o.obs || '').trim().length < 5) return rej(new Error('Escriba la observación.')); fo.OBS_TECNICO = (fo.OBS_TECNICO ? fo.OBS_TECNICO + '\n' : '') + o.obs.trim() + ' (' + us + ', ' + hoyISO() + ' 11:30)'; return res({ ok: true, obsTecnico: fo.OBS_TECNICO }); }
+      if (o.accion === 'respObsTecnico') { var fr = mockFila(o.numero); fr.OBS_TECNICO = (fr.OBS_TECNICO ? fr.OBS_TECNICO + '\n' : '') + '[T] ' + o.texto.trim() + ' (' + us + ', ' + hoyISO() + ' 15:00)'; fr.OBS_RESP_PEND = hoyISO() + ' 15:00'; return res({ ok: true }); }
+      if (o.accion === 'obsLeida') { mockFila(o.numero).OBS_RESP_PEND = ''; return res({ ok: true }); }
+      if (o.accion === 'obsTecnico') { var fo = mockFila(o.numero); if (String(o.obs || '').trim().length < 5) return rej(new Error('Escriba la observación.')); fo.OBS_TECNICO = (fo.OBS_TECNICO ? fo.OBS_TECNICO + '\n' : '') + o.obs.trim() + ' (' + us + ', ' + hoyISO() + ' 11:30)'; fo.OBS_RESP_PEND = ''; return res({ ok: true, obsTecnico: fo.OBS_TECNICO }); }
       if (o.accion === 'datosCalificacion' || o.accion === 'calificar') { try { return res(mockCalif(o, us)); } catch (e) { return rej(e); } }
       if (o.accion === 'entregar') { var fn = mockFila(o.numero); var dd2 = diasParq(fn.FECHA_AVISO_ENTREGA); var cb = o.cobro === undefined ? dd2 * tarifaParq(fn.TIPO_VEHICULO) : o.cobro; fn.ETAPA = 'ENTREGADO'; fn.FECHA_ENTREGA = hoyISO() + ' 16:00'; fn.COBRO_PARQUEADERO = String(cb); fn.PARQUEADERO_NOTA = o.motivo || ''; if (o.atencion !== undefined && o.atencion !== '') mockCalif({ accion: 'calificar', numero: o.numero, campos: { 4: o.atencion } }, us); return res({ ok: true, dias: dd2, cobro: cb }); }
       if (o.accion === 'enviarCorreo') { var fc = mockFila(o.numero); if (!fc.EMAIL) return rej(new Error('La orden no tiene un correo válido')); fc.CORREO_ENVIADO = 'hoy a ' + fc.EMAIL; mock.correos = (mock.correos || []).concat([{ to: fc.EMAIL, texto: o.texto }]); return res({ ok: true, email: fc.EMAIL, pdf: !!fc.pdfCli, fotos: fc.NUM_ARCHIVOS, omitidos: 0 }); }
@@ -878,6 +890,7 @@ function mockTec(o, tq, res, rej) {
   if (o.accion === 'subir' && o.informe && !o.esRespuesta) { mockInf(o.informe).fotos.push({ nombre: o.nombre, mime: o.mime, b64: o.b64 }); return res({ ok: true }); }
   if (o.accion === 'terminar') { var ft = mockFila(o.numero); if (ft.INFORME_DEVUELTO) return rej(new Error('Tiene un informe devuelto: primero corríjalo.')); if (mock.infs.some(function (x) { return x.NUMERO == o.numero && x.ESTADO === 'BORRADOR'; })) return rej(new Error('Tiene un hallazgo guardado a medias.')); if (ft.ETAPA !== 'APROBADO' && ft.ETAPA !== 'NO APROBADO') return rej(new Error('Sin respuesta del cliente')); ft.ETAPA = 'TERMINADO'; ft.AVISO_SERVICIO = o.avisoServicio || ''; ft.AVISO_SERVICIO_ENVIADO = ''; return res({ ok: true }); }
   if (o.accion === 'avisoServicioEnviado') { mockFila(o.numero).AVISO_SERVICIO_ENVIADO = 'hoy'; return res({ ok: true }); }
+  if (o.accion === 'respObsTecnico') { var fr2 = mockFila(o.numero); fr2.OBS_TECNICO = (fr2.OBS_TECNICO ? fr2.OBS_TECNICO + '\n' : '') + '[T] ' + o.texto.trim() + ' (' + tq + ', ' + hoyISO() + ' 15:00)'; fr2.OBS_RESP_PEND = hoyISO() + ' 15:00'; return res({ ok: true }); }
   return rej(new Error('Esta opción es solo para el coordinador.'));
 }
 function hoyISO() { var d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
@@ -1600,7 +1613,7 @@ function cargarLista() {
     var fe = $('filtroEtapa').value;
     var lista = $('soloFaltan').checked ? r.ordenes.filter(faltaAcepto) : ($('soloTurnos').checked ? r.ordenes.filter(esTurnoPend) :
       (fe.indexOf('__TEC:') === 0 ? r.ordenes.filter(function (o) { return o.ESTADO !== 'ANULADA' && o.ETAPA !== 'ENTREGADO' && o.ETAPA !== 'TURNO' && (o.TECNICO || 'SIN ASIGNAR') === fe.slice(6); }) :
-      fe === '__SINCALIF' ? r.ordenes.filter(califPend) : fe === '__SINENVIO' ? r.ordenes.filter(sinEnvio) : fe === '__SINAVISO' ? r.ordenes.filter(sinAvisoTec) : (fe === '__ENTREGAS' ? r.ordenes.filter(entregaPend) :
+      fe === '__OBSRESP' ? r.ordenes.filter(function (o) { return !!o.OBS_RESP_PEND; }) : fe === '__SINCALIF' ? r.ordenes.filter(califPend) : fe === '__SINENVIO' ? r.ordenes.filter(sinEnvio) : fe === '__SINAVISO' ? r.ordenes.filter(sinAvisoTec) : (fe === '__ENTREGAS' ? r.ordenes.filter(entregaPend) :
       (fe ? r.ordenes.filter(function (o) { return o.ESTADO !== 'ANULADA' && (o.ETAPA || 'EN TALLER') === fe; }) : r.ordenes.slice(0, 80)))));
     pintarAviso(r.ordenes.filter(faltaAcepto)); pintarTurnos(r.ordenes); pintarAvisosCoord(r.ordenes);
     if (!lista.length) { $('lista').innerHTML = '<div class="nota">' + ($('soloFaltan').checked ? 'Todas las órdenes tienen su aceptación. ✓' : ($('soloTurnos').checked ? 'No hay turnos pendientes.' : (fe ? 'No hay órdenes en esa etapa.' : 'Aún no hay órdenes.'))) + '</div>'; return; }
@@ -1617,7 +1630,7 @@ function cargarLista() {
         $('lista').appendChild(d);
         return;
       }
-      d.innerHTML = '<div class="num">' + o.NUMERO + '</div><div class="info"><div>' + esc(o.NOMBRE) + (o.ACEPTACION ? '<span class="badge">' + (esPapel(o) ? '✓ firmó' : '✓ aceptó') + '</span>' : '') + badgeEtapa(o.ESTADO === 'ANULADA' ? '' : o.ETAPA) + (sinAvisoTec(o) ? '<span class="badge" style="background:#fdeee6;color:#712b13">🔔 falta avisar al técnico</span>' : '') + (sinEnvio(o) ? '<span class="badge" style="background:#eeedfe;color:#3c3489">💬 sin enviar al cliente</span>' : '') + (o.INFORME_DEVUELTO ? '<span class="badge" style="background:#fde7e7;color:#a32d2d">↩️ informe devuelto al técnico</span>' : '') + (o.INFORME_AVANCE && !o.INFORME_DEVUELTO && (o.ETAPA === 'EN TALLER' || o.ETAPA === 'APROBADO') ? '<span class="badge" style="background:#e6f1fb;color:#0c447c">📝 informe en progreso</span>' : '') + (califPend(o) ? '<span class="badge" style="background:#fff3cd;color:#7a5b00">⭐ sin calificar</span>' : '') + (o.IMPRESA ? '<span class="badge">✓ impresa</span>' : '') + (o.ESTADO === 'ANULADA' ? '<span class="badge">anulada</span>' : '') + '</div><div>' + esc(o.FECHA_HORA) + ' · ' + esc(o.TIPO_VEHICULO) + ' · ' + esc(o.RECIBE) + ' · 👨‍🔧 ' + esc(o.TECNICO || 'sin técnico') + infoEntrega(o) + '</div></div>' +
+      d.innerHTML = '<div class="num">' + o.NUMERO + '</div><div class="info"><div>' + esc(o.NOMBRE) + (o.ACEPTACION ? '<span class="badge">' + (esPapel(o) ? '✓ firmó' : '✓ aceptó') + '</span>' : '') + badgeEtapa(o.ESTADO === 'ANULADA' ? '' : o.ETAPA) + (sinAvisoTec(o) ? '<span class="badge" style="background:#fdeee6;color:#712b13">🔔 falta avisar al técnico</span>' : '') + (sinEnvio(o) ? '<span class="badge" style="background:#eeedfe;color:#3c3489">💬 sin enviar al cliente</span>' : '') + (o.INFORME_DEVUELTO ? '<span class="badge" style="background:#fde7e7;color:#a32d2d">↩️ informe devuelto al técnico</span>' : '') + (o.INFORME_AVANCE && !o.INFORME_DEVUELTO && (o.ETAPA === 'EN TALLER' || o.ETAPA === 'APROBADO') ? '<span class="badge" style="background:#e6f1fb;color:#0c447c">📝 informe en progreso</span>' : '') + (o.OBS_RESP_PEND ? '<span class="badge" style="background:#ede7f6;color:#3c2a6b">💬 respuesta del técnico</span>' : '') + (califPend(o) ? '<span class="badge" style="background:#fff3cd;color:#7a5b00">⭐ sin calificar</span>' : '') + (o.IMPRESA ? '<span class="badge">✓ impresa</span>' : '') + (o.ESTADO === 'ANULADA' ? '<span class="badge">anulada</span>' : '') + '</div><div>' + esc(o.FECHA_HORA) + ' · ' + esc(o.TIPO_VEHICULO) + ' · ' + esc(o.RECIBE) + ' · 👨‍🔧 ' + esc(o.TECNICO || 'sin técnico') + infoEntrega(o) + '</div></div>' +
         '<div class="acc">' + (o.PDF_URL ? '<a href="' + esc(o.PDF_URL) + '" target="_blank">PDF</a>' : '') + (o.CARPETA_URL ? '<a href="' + esc(o.CARPETA_URL) + '" target="_blank">Fotos</a>' : '') +
         '<button data-a="acp">' + (o.ACEPTACION ? 'Quitar aceptación' : (esPapel(o) ? '✓ Firmó' : '✓ Aceptó')) + '</button>' +
         ((o.ETAPA === 'APROBADO' || o.ETAPA === 'NO APROBADO') && o.TECNICO && o.ESTADO !== 'ANULADA' ? '<button data-a="avr">📲 Avisar respuesta al técnico</button>' : '') +
@@ -1626,7 +1639,7 @@ function cargarLista() {
         (o.ESTADO !== 'ANULADA' && (['APROBADO', 'NO APROBADO', 'TERMINADO'].indexOf(o.ETAPA) >= 0 || (o.ETAPA === 'EN TALLER' && !o.ETAPA_FECHA)) ? '<button data-a="ent">📦 Aviso de entrega</button>' : '') +
         (o.ESTADO !== 'ANULADA' && o.ETAPA === 'LISTO PARA ENTREGA' ? '<button data-a="ent">💬 Reenviar aviso</button><button data-a="fin">🏁 Entregado</button>' : '') +
         (o.EMAIL && o.ESTADO !== 'ANULADA' ? '<button data-a="mail">📧 ' + (o.CORREO_ENVIADO ? 'Reenviar correo' : 'Enviar correo') + '</button>' : '') +
-        (puedeObs(o) ? '<button data-a="obs">📝 Observación al técnico' + (o.OBS_TECNICO ? ' (' + String(o.OBS_TECNICO).split('\n').length + ')' : '') + '</button>' : '') +
+        (puedeObs(o) ? '<button data-a="obs"' + (o.OBS_RESP_PEND ? ' class="pri"' : '') + '>' + (o.OBS_RESP_PEND ? '💬 Ver respuesta del técnico' : '📝 Observación al técnico' + (o.OBS_TECNICO ? ' (' + String(o.OBS_TECNICO).split('\n').length + ')' : '')) + '</button>' : '') +
         (puedeCalif(o) ? '<button data-a="cal">⭐ ' + (o.CALIF_TOTAL !== '' && o.CALIF_TOTAL !== undefined ? 'Calificación ' + o.CALIF_TOTAL + '/100' : 'Calificar técnico') + '</button>' : '') +
         '<button data-a="imp">' + (o.IMPRESA ? 'Desmarcar' : '✓ Impresa') + '</button>' + (o.ESTADO !== 'ANULADA' ? '<button data-a="anu">Anular</button>' : '') + '</div>';
       d.querySelector('[data-a=tec]').onclick = function () { abrirAsignar(o); };
@@ -1971,6 +1984,8 @@ function cargarMis() {
       var acc = d.querySelector('.accTec');
       if (o.AVISO_SERVICIO && !o.AVISO_SERVICIO_ENVIADO)
         boton(acc, '📲 Avisar a Alexander (servicio técnico) por WhatsApp', 'wa', function () { enviarAvisoServicio(o.NUMERO, o.AVISO_SERVICIO); });
+      if (o.OBS_TECNICO && o.ETAPA !== 'ENTREGADO')
+        boton(acc, '💬 Responder a servicio técnico', 'sec', function () { abrirRespObs(o); });
       var infDev = (o.informes || []).filter(function (i) { return i.ESTADO === 'DEVUELTO'; })[0];
       var infBor = (o.informes || []).filter(function (i) { return i.ESTADO === 'BORRADOR'; })[0];
       if (infBor && !o.INFORME_DEVUELTO) { var hb = !!(infBor.datos && infBor.datos.hallazgo);
@@ -2746,7 +2761,8 @@ $('btnEfCancelar').onclick = function () { mostrar('mEntregado', false); };
 function htmlObs(t) {
   return String(t || '').split('\n').filter(function (l) { return l.trim(); }).map(function (l) {
     var m = /^(.*?)\s*\(([^()]*),\s*(\d{4})-(\d{2})-(\d{2})[^()]*\)\s*$/.exec(l);
-    return '<div style="margin-top:6px">• ' + esc(m ? m[1] : l) + (m ? ' <span style="opacity:.7;font-size:13px">(' + esc(m[2]) + ', ' + m[5] + '/' + m[4] + ')</span>' : '') + '</div>';
+    var t = m ? m[1] : l, tec = /^\[T\]\s*/.test(t); t = t.replace(/^\[T\]\s*/, '');
+    return '<div style="margin-top:6px;' + (tec ? 'background:#fff;border-radius:8px;padding:4px 8px;margin-left:14px' : '') + '">' + (tec ? '💬 ' : '📝 ') + (m ? '<b>' + esc(titulo(String(m[2]).split(' ')[0])) + '</b> <span style="opacity:.7;font-size:13px">' + m[5] + '/' + m[4] + '</span>: ' : '') + esc(t) + '</div>';
   }).join('');
 }
 function puedeObs(o) { return o.ESTADO !== 'ANULADA' && !!o.TECNICO && ['TURNO', 'ENTREGADO'].indexOf(o.ETAPA) < 0; }
@@ -2754,10 +2770,12 @@ function abrirObs(o) {
   S.obsO = o; $('errObs').textContent = ''; $('obsTxt').value = '';
   $('obsTitulo').textContent = '📝 Observación al técnico · Orden ' + o.NUMERO;
   $('obsSub').textContent = o.TECNICO + ' · ' + o.NOMBRE + ' · ' + [o.TIPO_VEHICULO, o.MODELO].filter(Boolean).join(' ');
-  $('obsPrev').innerHTML = o.OBS_TECNICO ? '<div class="estado-box" style="background:#ede7f6;color:#3c2a6b"><b>Observaciones anteriores</b>' + htmlObs(o.OBS_TECNICO) + '</div>' : '';
+  $('obsPrev').innerHTML = o.OBS_TECNICO ? '<div class="estado-box" style="background:#ede7f6;color:#3c2a6b"><b>Conversación con el técnico</b>' + htmlObs(o.OBS_TECNICO) + '</div>' : '';
+  S.obsLeyo = false;
+  if (o.OBS_RESP_PEND) api({ accion: 'obsLeida', numero: o.NUMERO }).then(function () { o.OBS_RESP_PEND = ''; S.obsLeyo = true; }).catch(function () {});
   mostrar('mObs', true);
 }
-$('btnObsNo').onclick = function () { mostrar('mObs', false); };
+$('btnObsNo').onclick = function () { mostrar('mObs', false); if (S.obsLeyo) cargarLista(); };
 $('btnObsOk').onclick = function () {
   var o = S.obsO, t = $('obsTxt').value.trim(), b = this;
   if (t.length < 5) { $('errObs').textContent = 'Escriba la observación.'; return; }
@@ -2767,6 +2785,24 @@ $('btnObsOk').onclick = function () {
     avisarTecnico(o.TECNICO, '📝 *Orden No. ' + ordNom(o.NUMERO, o.NOMBRE) + '* – nueva observación de servicio técnico\n🔹 Vehículo: ' + [o.TIPO_VEHICULO, o.MODELO, o.COLOR].filter(Boolean).join(' ') + '\n\n' + t + '\n\nLa ve también en la app › Mis órdenes: ' + appUrl());
     cargarLista();
   }).catch(function (e) { b.disabled = false; $('errObs').textContent = e.message; });
+};
+
+function abrirRespObs(o) {
+  S.roO = o; $('errRo').textContent = ''; $('roTxt').value = '';
+  $('roTitulo').textContent = '💬 Responder · Orden ' + o.NUMERO;
+  $('roPrev').innerHTML = '<div class="estado-box" style="background:#ede7f6;color:#3c2a6b"><b>Observaciones de servicio técnico</b>' + htmlObs(o.OBS_TECNICO) + '</div>';
+  mostrar('mRespObs', true);
+}
+$('btnRoNo').onclick = function () { mostrar('mRespObs', false); };
+$('btnRoOk').onclick = function () {
+  var o = S.roO, t = $('roTxt').value.trim(), b = this;
+  if (t.length < 3) { $('errRo').textContent = 'Escriba la respuesta.'; return; }
+  b.disabled = true; $('errRo').textContent = '';
+  api({ accion: 'respObsTecnico', numero: o.NUMERO, texto: t }).then(function () {
+    b.disabled = false; mostrar('mRespObs', false);
+    waA(S.waServicio || '3003479102', '💬 *Orden No. ' + ordNom(o.NUMERO, o.CLIENTE) + '* – respuesta del técnico a la observación:\n\n' + t + '\n\nQueda en la app › Órdenes › 📝 Observación al técnico.');
+    cargarMis();
+  }).catch(function (e) { b.disabled = false; $('errRo').textContent = e.message; });
 };
 
 /* =================== CALIFICACIÓN DEL TÉCNICO (interna) =================== */
