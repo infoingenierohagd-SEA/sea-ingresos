@@ -234,6 +234,12 @@
       </div>
     </div>
 
+    <div id="boxGarantia" class="card oculto" style="background:#fde7e7;border-color:#f09595">
+      <h3 style="color:#a32d2d" id="garTitulo">🔁 Ingreso por garantía</h3>
+      <div id="garTxt" style="font-size:15px;line-height:1.45"></div>
+      <div class="nota">Al cliente le llega que <b>se validará si es garantía</b>: si lo es, no tiene costo; si no lo es, se le envía la cotización (el técnico la hace en su informe) para que la apruebe.</div>
+      <button class="btn sec peq" id="btnNoGarantia" type="button">No es garantía: quitar el vínculo</button>
+    </div>
     <div class="card">
       <h3>Datos del cliente</h3>
       <label for="f_nombre">Nombre *</label>
@@ -830,7 +836,7 @@ function mockApi(o) {
       if (o.accion === 'enviarCorreo') { var fc = mockFila(o.numero); if (!fc.EMAIL) return rej(new Error('La orden no tiene un correo válido')); fc.CORREO_ENVIADO = 'hoy a ' + fc.EMAIL; mock.correos = (mock.correos || []).concat([{ to: fc.EMAIL, texto: o.texto }]); return res({ ok: true, email: fc.EMAIL, pdf: !!fc.pdfCli, fotos: fc.NUM_ARCHIVOS, omitidos: 0 }); }
       if (o.accion === 'recibir') { var fr = mock.filas.filter(function (x) { return x.NUMERO == o.numero; })[0]; if (!fr || fr.ETAPA !== 'TURNO') return rej(new Error('La orden ya fue recibida')); Object.assign(fr, { ETAPA: 'EN TALLER', NOMBRE: o.datos.nombre, FECHA_LLEGADA: 'hoy', RECIBE_LLEGADA: us });
         return res({ ok: true, numero: fr.NUMERO, fecha: hoyISO(), recibe: us, carpeta: fr.CARPETA_URL }); }
-      if (o.accion === 'guardar') { mock.ultimo++; var dd = o.datos; var f = { NUMERO: mock.ultimo, ETAPA: dd.modo === 'turno' ? 'TURNO' : 'EN TALLER', TURNO_FECHA_HORA: dd.modo === 'turno' ? dd.turno : '', CEDULA: dd.cedula, EMAIL: dd.email, MODELO: dd.modelo, COLOR: dd.color, MOTIVO: dd.motivo, COTIZACION: dd.cotizacion, ITEMS: JSON.stringify(dd.items || []), TECNICO: dd.tecnico, ESTADO_FISICO: dd.estado, ELEMENTOS: dd.elementos, MOTOR_CHASIS: dd.motorChasis, TRATO: dd.trato, TOTAL: dd.total === '' ? '' : String(dd.total), ABONO: dd.abono === '' ? '' : String(dd.abono), MEDIO_ABONO: dd.medioAbono, FECHA_HORA: new Date().toISOString().slice(0, 16).replace('T', ' '), FECHA: hoyISO(), RECIBE: us, NOMBRE: o.datos.nombre, TELEFONO: o.datos.telefono, TIPO_VEHICULO: o.datos.tipo, PDF_URL: '', CARPETA_URL: 'https://drive.google.com/drive/folders/DEMO', IMPRESA: '', ESTADO: 'ACTIVA', NUM_ARCHIVOS: 0, CANAL: o.datos.canal === 'papel' ? 'SIN WHATSAPP (FIRMA EN PAPEL)' : 'WHATSAPP' }; mock.filas.push(f);
+      if (o.accion === 'guardar') { mock.ultimo++; var dd = o.datos; var f = { GARANTIA_DE: dd.garantiaDe || '', CEDULA: dd.cedula || '', EMAIL: dd.email || '', NUMERO: mock.ultimo, ETAPA: dd.modo === 'turno' ? 'TURNO' : 'EN TALLER', TURNO_FECHA_HORA: dd.modo === 'turno' ? dd.turno : '', CEDULA: dd.cedula, EMAIL: dd.email, MODELO: dd.modelo, COLOR: dd.color, MOTIVO: dd.motivo, COTIZACION: dd.cotizacion, ITEMS: JSON.stringify(dd.items || []), TECNICO: dd.tecnico, ESTADO_FISICO: dd.estado, ELEMENTOS: dd.elementos, MOTOR_CHASIS: dd.motorChasis, TRATO: dd.trato, TOTAL: dd.total === '' ? '' : String(dd.total), ABONO: dd.abono === '' ? '' : String(dd.abono), MEDIO_ABONO: dd.medioAbono, FECHA_HORA: new Date().toISOString().slice(0, 16).replace('T', ' '), FECHA: hoyISO(), RECIBE: us, NOMBRE: o.datos.nombre, TELEFONO: o.datos.telefono, TIPO_VEHICULO: o.datos.tipo, PDF_URL: '', CARPETA_URL: 'https://drive.google.com/drive/folders/DEMO', IMPRESA: '', ESTADO: 'ACTIVA', NUM_ARCHIVOS: 0, CANAL: o.datos.canal === 'papel' ? 'SIN WHATSAPP (FIRMA EN PAPEL)' : 'WHATSAPP' }; mock.filas.push(f);
         return res({ ok: true, numero: mock.ultimo, fecha: f.FECHA, recibe: us, carpeta: f.CARPETA_URL }); }
       if (o.accion === 'subir' && o.informe) { if (o.esRespuesta) mockInf(o.informe).captura = 1; return res({ ok: true }); }
       if (o.accion === 'subir' && o.esPdfCliente) { mockFila(o.numero).pdfCli = { nombre: o.nombre, mime: o.mime, b64: o.b64 }; return res({ ok: true }); }
@@ -1165,7 +1171,7 @@ function leerForm() {
     cotizacion: $('f_cotizacion').value.trim(), items: leerItems(),
     total: $('f_total').value === '' ? '' : Number($('f_total').value), abono: $('f_abono').value === '' ? '' : Number($('f_abono').value),
     medioAbono: $('f_medio').value, tecnico: $('f_tecnico').value, motorChasis: $('f_motor').value.trim().toUpperCase(),
-    separaTurno: modo() !== 'ingreso', enTaller: modo() !== 'turno', canal: S.canal, modo: modo(),
+    separaTurno: modo() !== 'ingreso', enTaller: modo() !== 'turno', canal: S.canal, modo: modo(), garantiaDe: S.garantiaDe || '',
     turno: modo() === 'turno' ? ($('f_turnoFecha').value + ' ' + $('f_turnoHora').value).trim() : (S.recibir ? S.recibir.TURNO_FECHA_HORA : '')
   };
 }
@@ -1286,6 +1292,7 @@ function mensaje(P) {
     'Adjuntamos las imágenes del ingreso de su vehículo 📸, registrando su estado actual al momento de la recepción.\n\n' +
     '🔹 Orden de ingreso No. ' + P.numero + '\n' +
     '🔹 Nombre Persona que realiza el ingreso: ' + P.recibe + '\n\n' +
+    (d.garantiaDe ? '🔁 *Solicitud de garantía de la orden No. ' + d.garantiaDe + '*\nNuestro técnico revisará el vehículo para validar si lo reportado está cubierto por la garantía del servicio anterior. Si es garantía, no tiene costo. Si no lo es, le enviaremos la cotización de lo que se necesite para que usted la apruebe antes de hacer cualquier arreglo.\n\n' : '') +
     'Estas imágenes o vídeos son parte de nuestro proceso de registro para garantizar transparencia y calidad en el servicio.\n\n' +
     '📋 *Condiciones del servicio*\n' +
     '• Una vez se indique que el bien aquí reportado ya puede ser recogido en nuestras instalaciones por el propietario, se esperará máximo 2 días calendario después de la fecha de notificación enviada vía WhatsApp al teléfono indicado. Después de transcurrido este tiempo, se cobrará por día de parqueadero un valor de $10.000 para motos y bicimotos, $6.000 patinetas y bicicletas y $3.000 repuestos.\n' +
@@ -1472,7 +1479,7 @@ $('btnDescargarPdf').onclick = function () { descargar(S.ultima.pdf); };
 $('btnNuevo').onclick = function () { mostrar('mListo', false); window.scrollTo(0, 0); revisarFaltantes(); };
 
 function limpiarForm() {
-  S.recibir = null; S.borrId = null; $('borrIngTxt').textContent = '';
+  S.recibir = null; S.borrId = null; $('borrIngTxt').textContent = ''; S.garantiaDe = ''; mostrar('boxGarantia', false);
   $('segTurno').querySelector('[data-v=taller]').click();
   ['f_nombre', 'f_telefono', 'f_cedula', 'f_email', 'f_tipo', 'f_modelo', 'f_color', 'f_motivo', 'f_estado', 'f_elementos', 'f_cotizacion', 'f_total', 'f_abono', 'f_medio', 'f_turnoFecha', 'f_turnoHora', 'f_tecnico', 'f_motor']
     .forEach(function (id) { $(id).value = ''; });
@@ -1664,7 +1671,7 @@ function cargarLista() {
         $('lista').appendChild(d);
         return;
       }
-      d.innerHTML = '<div class="num">' + o.NUMERO + '</div><div class="info"><div>' + esc(o.NOMBRE) + (o.ACEPTACION ? '<span class="badge">' + (esPapel(o) ? '✓ firmó' : '✓ aceptó') + '</span>' : '') + badgeEtapa(o.ESTADO === 'ANULADA' ? '' : o.ETAPA) + (sinAvisoTec(o) ? '<span class="badge" style="background:#fdeee6;color:#712b13">🔔 falta avisar al técnico</span>' : '') + (sinEnvio(o) ? '<span class="badge" style="background:#eeedfe;color:#3c3489">💬 sin enviar al cliente</span>' : '') + (o.INFORME_DEVUELTO ? '<span class="badge" style="background:#fde7e7;color:#a32d2d">↩️ informe devuelto al técnico</span>' : '') + (o.INFORME_AVANCE && !o.INFORME_DEVUELTO && (o.ETAPA === 'EN TALLER' || o.ETAPA === 'APROBADO') ? '<span class="badge" style="background:#e6f1fb;color:#0c447c">📝 informe en progreso</span>' : '') + (o.OBS_RESP_PEND ? '<span class="badge" style="background:#ede7f6;color:#3c2a6b">💬 respuesta del técnico</span>' : '') + (califPend(o) ? '<span class="badge" style="background:#fff3cd;color:#7a5b00">⭐ sin calificar</span>' : '') + (o.IMPRESA ? '<span class="badge">✓ impresa</span>' : '') + (o.ESTADO === 'ANULADA' ? '<span class="badge">anulada</span>' : '') + '</div><div>' + esc(o.FECHA_HORA) + ' · ' + esc(o.TIPO_VEHICULO) + ' · ' + esc(o.RECIBE) + ' · 👨‍🔧 ' + esc(o.TECNICO || 'sin técnico') + infoEntrega(o) + '</div></div>' +
+      d.innerHTML = '<div class="num">' + o.NUMERO + '</div><div class="info"><div>' + esc(o.NOMBRE) + (o.ACEPTACION ? '<span class="badge">' + (esPapel(o) ? '✓ firmó' : '✓ aceptó') + '</span>' : '') + badgeEtapa(o.ESTADO === 'ANULADA' ? '' : o.ETAPA) + (sinAvisoTec(o) ? '<span class="badge" style="background:#fdeee6;color:#712b13">🔔 falta avisar al técnico</span>' : '') + (sinEnvio(o) ? '<span class="badge" style="background:#eeedfe;color:#3c3489">💬 sin enviar al cliente</span>' : '') + (o.INFORME_DEVUELTO ? '<span class="badge" style="background:#fde7e7;color:#a32d2d">↩️ informe devuelto al técnico</span>' : '') + (o.INFORME_AVANCE && !o.INFORME_DEVUELTO && (o.ETAPA === 'EN TALLER' || o.ETAPA === 'APROBADO') ? '<span class="badge" style="background:#e6f1fb;color:#0c447c">📝 informe en progreso</span>' : '') + (o.GARANTIA_DE ? '<span class="badge" style="background:#fde7e7;color:#a32d2d">🔁 garantía de ' + esc(o.GARANTIA_DE) + '</span>' : '') + (o.OBS_RESP_PEND ? '<span class="badge" style="background:#ede7f6;color:#3c2a6b">💬 respuesta del técnico</span>' : '') + (califPend(o) ? '<span class="badge" style="background:#fff3cd;color:#7a5b00">⭐ sin calificar</span>' : '') + (o.IMPRESA ? '<span class="badge">✓ impresa</span>' : '') + (o.ESTADO === 'ANULADA' ? '<span class="badge">anulada</span>' : '') + '</div><div>' + esc(o.FECHA_HORA) + ' · ' + esc(o.TIPO_VEHICULO) + ' · ' + esc(o.RECIBE) + ' · 👨‍🔧 ' + esc(o.TECNICO || 'sin técnico') + infoEntrega(o) + '</div></div>' +
         '<div class="acc">' + (o.PDF_URL ? '<a href="' + esc(o.PDF_URL) + '" target="_blank">PDF</a>' : '') + (o.CARPETA_URL ? '<a href="' + esc(o.CARPETA_URL) + '" target="_blank">Fotos</a>' : '') +
         '<button data-a="acp">' + (o.ACEPTACION ? 'Quitar aceptación' : (esPapel(o) ? '✓ Firmó' : '✓ Aceptó')) + '</button>' +
         ((o.ETAPA === 'APROBADO' || o.ETAPA === 'NO APROBADO') && o.TECNICO && o.ESTADO !== 'ANULADA' ? '<button data-a="avr">📲 Avisar respuesta al técnico</button>' : '') +
@@ -1696,7 +1703,7 @@ function cargarLista() {
       var ml = d.querySelector('[data-a=mail]');
       if (ml) ml.onclick = function () {
         if (!confirm((o.CORREO_ENVIADO ? 'Ya se envió: ' + o.CORREO_ENVIADO + '\n\n' : '') + '¿Enviar la orden de ingreso y las fotos de la orden ' + o.NUMERO + ' a ' + o.EMAIL + '?')) return;
-        var P = { numero: o.NUMERO, recibe: o.RECIBE, trato: 'x', datos: { nombre: o.NOMBRE, canal: esPapel(o) ? 'papel' : 'whatsapp' } };
+        var P = { numero: o.NUMERO, recibe: o.RECIBE, trato: 'x', datos: { nombre: o.NOMBRE, canal: esPapel(o) ? 'papel' : 'whatsapp', garantiaDe: o.GARANTIA_DE || '' } };
         ml.disabled = true; ml.textContent = 'Enviando…';
         api({ accion: 'enviarCorreo', numero: o.NUMERO, texto: mensajeCorreo(P) }).then(function (r) { alert('✓ Enviado a ' + r.email + (r.pdf ? '' : ' (sin PDF: esta orden es anterior a los correos; envíelo por WhatsApp)') + '.'); cargarLista(); })
           .catch(function (e) { alert('No se pudo enviar: ' + e.message); ml.disabled = false; ml.textContent = '📧 Enviar correo'; });
@@ -3055,9 +3062,37 @@ function hojaHTML(l) {
       '<div style="margin-top:4px"><b>Motivo:</b> ' + esc(o.MOTIVO) + '</div><div style="margin-top:4px">' + serv + '</div>' +
       (numDe(o.COBRO_PARQUEADERO) ? '<div>🅿️ Parqueadero cobrado: ' + fmt(numDe(o.COBRO_PARQUEADERO)) + '</div>' : '') +
       (o.FECHA_ENTREGA ? '<div style="margin-top:4px">🏁 Entregado ' + esc(o.FECHA_ENTREGA.slice(0, 10)) + ' · ' + (enGarantia(o) ? '<b style="color:#a32d2d">en garantía hasta ' + esc(o.GARANTIA_HASTA) + '</b>' : 'garantía hasta ' + esc(o.GARANTIA_HASTA)) + '</div>' : '') +
-      (o.PDF_URL ? '<div style="margin-top:4px"><a href="' + esc(o.PDF_URL) + '" target="_blank">Ver orden PDF</a></div>' : '') + '</div>';
+      (o.PDF_URL ? '<div style="margin-top:4px"><a href="' + esc(o.PDF_URL) + '" target="_blank">Ver orden PDF</a></div>' : '') +
+      (o.ESTADO !== 'ANULADA' && S.hjPuedeNuevo ? '<div class="acc" style="margin-top:6px"><button type="button" class="' + (enGarantia(o) ? 'pri' : '') + '" data-gar="' + esc(o.NUMERO) + '">' + (enGarantia(o) ? '🔁 Ingreso por garantía' : '🔁 Nuevo ingreso con estos datos') + '</button></div>' : '') + '</div>';
   }).join('');
 }
+/* abre "Nuevo ingreso" con los datos del cliente y del vehículo de una orden anterior; si está en garantía, queda vinculada */
+function ingresoDesde(o) {
+  var gar = enGarantia(o);
+  if (!gar && !confirm('La orden ' + o.NUMERO + (o.GARANTIA_HASTA ? ' ya salió de garantía (era hasta ' + o.GARANTIA_HASTA + ')' : ' no tiene entrega registrada') + '.\n\n¿Hacer un ingreso NUEVO (normal, con cobro) con los mismos datos del cliente y del vehículo?')) return;
+  mostrar('mHoja', false);
+  $('tabNuevo').click(); limpiarForm();
+  var v = { f_nombre: o.NOMBRE, f_telefono: o.TELEFONO, f_cedula: o.CEDULA, f_email: o.EMAIL, f_modelo: o.MODELO, f_color: o.COLOR, f_motor: o.MOTOR };
+  Object.keys(v).forEach(function (k) { if (v[k]) $(k).value = v[k]; });
+  if (o.TIPO_VEHICULO && [].some.call($('f_tipo').options, function (op) { return op.value === o.TIPO_VEHICULO; })) $('f_tipo').value = o.TIPO_VEHICULO;
+  if (/PAPEL/.test(o.CANAL || '')) $('segCanal').querySelector('[data-v=papel]').click();
+  if (gar) {
+    S.garantiaDe = String(o.NUMERO);
+    if (o.TECNICO && [].some.call($('f_tecnico').options, function (op) { return op.value === o.TECNICO; })) $('f_tecnico').value = o.TECNICO;
+    $('f_motivo').value = 'SOLICITUD DE GARANTÍA orden ' + o.NUMERO + ': ';
+    $('garTitulo').textContent = '🔁 Ingreso por garantía de la orden ' + o.NUMERO;
+    var it = []; try { it = JSON.parse(o.ITEMS_APROBADOS || '[]'); } catch (e) {}
+    $('garTxt').innerHTML = 'Entregada el ' + esc(String(o.FECHA_ENTREGA).slice(0, 10)) + ' · garantía hasta <b>' + esc(o.GARANTIA_HASTA) + '</b> · técnico ' + esc(titulo(o.TECNICO || 'sin técnico')) + '<br>Motivo de esa vez: ' + esc(o.MOTIVO) +
+      (it.length ? '<br>Lo que se hizo: ' + it.map(function (i) { return esc(linItem(i, true)); }).join('; ') : '');
+    mostrar('boxGarantia', true);
+  }
+  $('f_motivo').focus();
+  window.scrollTo(0, 0);
+}
+$('btnNoGarantia').onclick = function () {
+  S.garantiaDe = ''; mostrar('boxGarantia', false);
+  $('f_motivo').value = $('f_motivo').value.replace(/^(SOLICITUD DE )?GARANTÍA orden \d+:\s*/, '');
+};
 function abrirHoja(q, excluir) {
   q = String(q || '').trim();
   if (q.length < 3) { alert('Escriba el N° de motor, el celular o el nombre (mínimo 3 caracteres).'); return; }
@@ -3065,7 +3100,9 @@ function abrirHoja(q, excluir) {
   api({ accion: 'historial', q: q, excluir: excluir || '' }).then(function (r) {
     var motores = {}; r.ordenes.forEach(function (o) { if (o.MOTOR) motores[normMotor(o.MOTOR)] = 1; });
     var n = Object.keys(motores).length;
-    $('hjCuerpo').innerHTML = '<div class="nota">' + r.ordenes.length + ' orden(es)' + (r.ordenes.length && r.ordenes[0].por !== 'motor' && n > 1 ? ' de ' + n + ' vehículos distintos (búsqueda por ' + r.ordenes[0].por + ')' : '') + '. Garantía: ' + (r.diasGarantia || 5) + ' días desde la entrega.</div>' + hojaHTML(r.ordenes);
+    $('hjCuerpo').innerHTML = '<div class="nota">' + r.ordenes.length + ' orden(es)' + (r.ordenes.length && r.ordenes[0].por !== 'motor' && n > 1 ? ' de ' + n + ' vehículos distintos (búsqueda por ' + r.ordenes[0].por + ')' : '') + '. Garantía: ' + (r.diasGarantia || 5) + ' días desde la entrega.</div>' + (S.hjPuedeNuevo = true, hojaHTML(r.ordenes));
+    S.hjPuedeNuevo = false;
+    $('hjCuerpo').querySelectorAll('[data-gar]').forEach(function (b) { b.onclick = function () { ingresoDesde(r.ordenes.filter(function (x) { return String(x.NUMERO) === b.dataset.gar; })[0]); }; });
   }).catch(function (e) { $('hjCuerpo').innerHTML = '<div class="err">' + esc(e.message) + '</div>'; });
 }
 $('btnHoja').onclick = function () { abrirHoja($('qHoja').value); };
@@ -3097,7 +3134,7 @@ function abrirReenvio(o) {
   var turno = o.ETAPA === 'TURNO';
   var P = { numero: o.NUMERO, recibe: titulo(o.RECIBE) || o.RECIBE, trato: o.TRATO || 'x',
     datos: { nombre: o.NOMBRE, canal: 'whatsapp', telefono: o.TELEFONO, turno: o.TURNO_FECHA_HORA, tipo: o.TIPO_VEHICULO, modelo: o.MODELO, color: o.COLOR,
-      motivo: o.MOTIVO, abono: numDe(o.ABONO), medioAbono: o.MEDIO_ABONO } };
+      motivo: o.MOTIVO, abono: numDe(o.ABONO), medioAbono: o.MEDIO_ABONO, garantiaDe: o.GARANTIA_DE || '' } };
   S.re = { o: o, P: P, turno: turno, fotos: null, pdf: null, texto: turno ? mensajeTurno(P) : mensaje(P) };
   $('reTitulo').textContent = (o.ENVIO_CLIENTE ? 'Reenviar ' : 'Enviar ') + (turno ? 'confirmación del turno' : 'ingreso') + ' · Orden ' + o.NUMERO;
   $('reSub').textContent = o.NOMBRE + ' · ' + o.TELEFONO + ' · hizo el ingreso: ' + (o.RECIBE || '') + (o.ENVIO_CLIENTE ? ' · ya enviado: ' + o.ENVIO_CLIENTE : '');
