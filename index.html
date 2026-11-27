@@ -1385,8 +1385,8 @@ $('btnWaChat').onclick = function () {
 };
 /* Grupos para compartir: Chrome deja máximo 10 archivos y ~50 MB por envío. Se empieza con 10 por grupo;
    si un celular rechaza el grupo dos veces, ese celular baja a la mitad (10 → 5 → 2 → 1) y lo recuerda. */
-function maxGrupo() { try { var v = Number(localStorage.getItem('sea_grupoMax')); return v >= 1 && v <= 10 ? v : 10; } catch (e) { return 10; } }
-function bajarGrupo() { var m = maxGrupo(), n = m > 5 ? 5 : m > 2 ? 2 : 1; try { localStorage.setItem('sea_grupoMax', String(n)); localStorage.removeItem('sea_share1'); } catch (e) {} return n; }
+function maxGrupo() { try { var v = Number(localStorage.getItem('sea_grupoMax2')); return v >= 1 && v <= 10 ? v : 10; } catch (e) { return 10; } }
+function bajarGrupo() { var m = maxGrupo(), n = m > 5 ? 5 : m > 2 ? 2 : 1; try { localStorage.setItem('sea_grupoMax2', String(n)); localStorage.removeItem('sea_share1'); } catch (e) {} return n; }
 function lotesArchivos(files) {
   var out = [], cur = [], sz = 0, max = maxGrupo();
   (files || []).forEach(function (f) {
@@ -1757,6 +1757,23 @@ function waA(tel, texto) { window.open('https://api.whatsapp.com/send?phone=' + 
 function boton(cont, txt, cls, fn) { var b = document.createElement('button'); b.type = 'button'; b.className = 'btn ' + cls + ' peq'; b.textContent = txt; b.onclick = fn; cont.appendChild(b); return b; }
 function diasDesde(s) { var m = String(s || '').match(/(\d{4})-(\d{2})-(\d{2})/); if (!m) return 0; var d = new Date(+m[1], +m[2] - 1, +m[3]), h = new Date(); h.setHours(0, 0, 0, 0); return Math.max(0, Math.round((h - d) / 86400000)); }
 function txtDias(n) { return n === 0 ? 'hoy' : (n === 1 ? 'hace 1 día' : 'hace ' + n + ' días'); }
+/* Archivos traídos de Drive (informe, entrega, reenvío): se rehacen en el celular igual que las fotos del ingreso
+   (JPEG nuevo, nombre limpio, tipo correcto). Así Chrome los acepta al compartir; los vacíos o dañados se descartan. */
+function prepCompartir(f) {
+  if (!f || !f.size) return Promise.resolve(null);
+  var nom = String(f.name || 'archivo').replace(/[^\w.\-]+/g, '_'), base = nom.replace(/\.\w+$/, '') || 'archivo';
+  if (/^video\//.test(f.type || '') || /\.(mp4|m4v|mov|3gp|webm|mkv)$/i.test(nom)) {
+    var wb = /webm/i.test(f.type) || /\.webm$/i.test(nom);
+    return Promise.resolve(new File([f], base + (wb ? '.webm' : '.mp4'), { type: wb ? 'video/webm' : 'video/mp4' }));
+  }
+  if (/pdf/i.test(f.type) || /\.pdf$/i.test(nom)) return Promise.resolve(new File([f], base + '.pdf', { type: 'application/pdf' }));
+  var esImg = /^image\//.test(f.type || '') || /\.(jpe?g|png|webp|gif|bmp|heic|heif)$/i.test(nom);
+  // todo lo demás se intenta abrir como foto: si abre, sale un JPEG limpio; si es una foto que no abre (dañada), se deja por fuera
+  return comprimir(f).then(function (g) {
+    if (g !== f) return new File([g], base + '.jpg', { type: 'image/jpeg' });
+    return esImg ? null : f;
+  });
+}
 function b64aFile(f) { var bin = atob(f.b64), u = new Uint8Array(bin.length); for (var i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return new File([u], f.nombre, { type: f.mime || 'image/jpeg' }); }
 
 /* ---------- componentes (✅ ⚠️ 🔴 + nota) e ítems: los usan el técnico y el coordinador ---------- */
@@ -2610,7 +2627,7 @@ function traerVarios(n, pedir, alAvanzar) {
 /* trae las fotos del informe de a una (con un reintento cada una): con muchas fotos, traerlas todas juntas fallaba ("Failed to fetch") */
 function traerFotosInforme(inf, fin) {
   traerVarios(inf.numFotos || 0, function (k) {
-    return api({ accion: 'fotosInforme', id: inf.ID, k: k }).then(function (r) { return r.grande ? null : r.foto ? b64aFile(r.foto) : (r.fotos && r.fotos[k]) ? b64aFile(r.fotos[k]) : null; });
+    return api({ accion: 'fotosInforme', id: inf.ID, k: k }).then(function (r) { return r.grande ? null : r.foto ? b64aFile(r.foto) : (r.fotos && r.fotos[k]) ? b64aFile(r.fotos[k]) : null; }).then(prepCompartir);
   }, function (h, n) { $('eiFotosTxt').textContent = 'Preparando fotos: ' + h + ' de ' + n + '…'; }).then(function (r) { fin(r.files, r.fallas); });
 }
 $('btnEiWa').onclick = function () { $('e1').classList.add('ok'); waA(S.ei.inf.orden.TELEFONO, S.ei.txt); };
@@ -2747,7 +2764,7 @@ function abrirEntrega(o) {
   if (ids.length && !papel) {
     $('btnEnFotos').disabled = true;
     traerVarios(ids.length, function (k) {
-      return api({ accion: 'fotosFin', numero: o.NUMERO, k: k }).then(function (r) { return r.grande ? null : b64aFile(r.foto); });
+      return api({ accion: 'fotosFin', numero: o.NUMERO, k: k }).then(function (r) { return r.grande ? null : b64aFile(r.foto); }).then(prepCompartir);
     }, function (h, n) { $('enFotosTxt').textContent = 'Preparando fotos del trabajo terminado: ' + h + ' de ' + n + '…'; }).then(function (r) {
       var files = r.files, fallas = r.fallas;
       S.entFin.files = files; $('btnEnFotos').disabled = !files.length;
@@ -3155,7 +3172,7 @@ function abrirReenvio(o) {
       var l = r.lista || [];
       return traerVarios(l.length, function (k) {
         if (!S.re || S.re.o.NUMERO !== reNum) return Promise.resolve(null);   // cerró o abrió otra orden
-        return api({ accion: 'archivosIngreso', numero: reNum, k: l[k].k }).then(function (x) { return b64aFile(x.archivo); });
+        return api({ accion: 'archivosIngreso', numero: reNum, k: l[k].k }).then(function (x) { return b64aFile(x.archivo); }).then(prepCompartir);
       }, function (h, n) { if (S.re && S.re.o.NUMERO === reNum) $('reFotosTxt').textContent = 'Preparando archivos: ' + h + ' de ' + n + '…'; }).then(function (t) {
         if (!S.re || S.re.o.NUMERO !== reNum) return null;
         var fotos = [], pdf = null;
