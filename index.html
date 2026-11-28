@@ -463,6 +463,7 @@
         <b>🔁 ¿Cuál ítem autorizado hay que cambiar? *</b>
         <div style="font-size:13px;margin:4px 0 6px">Márquelo y abajo, en Cotización, corrija el ítem (ej.: de 28 cm a 30 cm, con su código y precio). Si el cliente aprueba, el ítem viejo se quita y queda el nuevo. Si no aprueba, queda lo que ya estaba autorizado.</div>
         <div id="cambioLista"></div>
+        <div style="font-size:13px;margin-top:8px">¿Solo falta o está mal el <b>código</b> (mismo concepto y precio)? <a href="#" id="lnkSoloCod" style="font-weight:700">🏷️ Corregir solo códigos</a> (no va al cliente).</div>
       </div>
       <div id="boxTipoInf">
         <label style="margin-top:10px">Tipo de informe</label>
@@ -741,6 +742,15 @@
   <button class="btn sec peq" id="btnTecServListo">Cerrar</button>
 </div></div>
 
+<div id="mCod" class="modal oculto"><div class="card">
+  <h3 id="cdTitulo">🏷️ Códigos de lo autorizado</h3>
+  <div class="nota">Ponga el código que falta o corrija el que está mal. <b>El concepto y el precio no cambian</b> y no se le envía nada al cliente. Si cambia la medida, la referencia o el precio, use <b>🔁 Cambiar un ítem ya autorizado</b>.</div>
+  <div id="cdLista" style="margin-top:8px"></div>
+  <div class="err" id="errCd"></div>
+  <button class="btn pri" id="btnCdOk">💾 Guardar códigos</button>
+  <button class="btn sec peq" id="btnCdCancelar">Cancelar</button>
+</div></div>
+
 <div id="mEnviarInf" class="modal oculto"><div class="card">
   <div style="text-align:center;color:var(--gris);font-size:14px">Informe guardado · Orden</div>
   <div class="numgrande" id="eiNum"></div>
@@ -925,6 +935,9 @@ function mockTec(o, tq, res, rej) {
   if (o.accion === 'subir' && o.esFin) { var fq = mockFila(o.numero); (fq._fin = fq._fin || []).push({ nombre: o.nombre, mime: o.mime, b64: o.b64 }); fq.FOTOS_FIN = JSON.stringify(fq._fin.map(function (x, i) { return 'id' + i; })); return res({ ok: true }); }
   if (o.accion === 'subir' && o.informe && !o.esRespuesta) { mockInf(o.informe).fotos.push({ nombre: o.nombre, mime: o.mime, b64: o.b64 }); return res({ ok: true }); }
   if (o.accion === 'terminar') { var ft = mockFila(o.numero); if (ft.INFORME_DEVUELTO) return rej(new Error('Tiene un informe devuelto: primero corríjalo.')); if (mock.infs.some(function (x) { return x.NUMERO == o.numero && x.ESTADO === 'BORRADOR'; })) return rej(new Error('Tiene un hallazgo guardado a medias.')); if (ft.ETAPA !== 'APROBADO' && ft.ETAPA !== 'NO APROBADO') return rej(new Error('Sin respuesta del cliente')); ft.ETAPA = 'TERMINADO'; ft.AVISO_SERVICIO = o.avisoServicio || ''; ft.AVISO_SERVICIO_ENVIADO = ''; return res({ ok: true }); }
+  if (o.accion === 'corregirCodigos') { var fk = mockFila(o.numero); if (['APROBADO', 'TERMINADO', 'LISTO PARA ENTREGA'].indexOf(fk.ETAPA) < 0) return rej(new Error('Etapa no permite')); var lg = [];
+    o.cambios.forEach(function (c) { var x = mock.infs.filter(function (z) { return z.NUMERO == o.numero && z.RONDA === c.ronda; })[0], dt = x.final || x.original; lg.push(dt.items[c.k].codigo + '→' + c.codigo); dt.items[c.k].codigo = c.codigo; });
+    fk.ITEMS_APROBADOS = JSON.stringify(mockAprob(o.numero)); fk.CODIGOS_CORREGIDOS = lg.join('; '); fk.AVISO_SERVICIO = (fk.AVISO_SERVICIO && !fk.AVISO_SERVICIO_ENVIADO ? fk.AVISO_SERVICIO + '\n\n' : '') + (o.avisoServicio || ''); fk.AVISO_SERVICIO_ENVIADO = ''; return res({ ok: true }); }
   if (o.accion === 'avisoServicioEnviado') { mockFila(o.numero).AVISO_SERVICIO_ENVIADO = 'hoy'; return res({ ok: true }); }
   if (o.accion === 'respObsTecnico') { var fr2 = mockFila(o.numero); fr2.OBS_TECNICO = (fr2.OBS_TECNICO ? fr2.OBS_TECNICO + '\n' : '') + '[T] ' + o.texto.trim() + ' (' + tq + ', ' + hoyISO() + ' 15:00)'; fr2.OBS_RESP_PEND = hoyISO() + ' 15:00'; return res({ ok: true }); }
   return rej(new Error('Esta opción es solo para el coordinador.'));
@@ -2077,6 +2090,8 @@ function cargarMis() {
       if (['APROBADO', 'TERMINADO', 'LISTO PARA ENTREGA'].indexOf(o.ETAPA) >= 0 && aprobadosCli(o).length) {
         if (pendInf) acc.insertAdjacentHTML('beforeend', '<div class="nota">🔁 Para cambiar un ítem autorizado, espere a que se resuelva el informe que está pendiente.</div>');
         else boton(acc, '🔁 Cambiar un ítem ya autorizado (otra medida, otra referencia…)', 'sec', function () { abrirFormInf(o, true, null, true); });
+        var nPend = aprobadosCli(o).filter(codPendiente).length;
+        boton(acc, nPend ? '🏷️ Poner códigos pendientes (' + nPend + ')' : '🏷️ Corregir el código de un ítem autorizado', nPend ? 'pri' : 'sec', function () { abrirCodigos(o); });
       }
       if (o.ETAPA === 'TERMINADO' || o.ETAPA === 'LISTO PARA ENTREGA')
         boton(acc, Number(o.NUM_FOTOS_FIN) ? '📸 Agregar más fotos de cómo quedó (' + o.NUM_FOTOS_FIN + ' ya subidas)' : '📸 Agregar fotos de cómo quedó', Number(o.NUM_FOTOS_FIN) ? 'sec' : 'pri', function () { abrirFin(o, true); });
@@ -2096,6 +2111,40 @@ function aprobadosCli(o) {
   });
   return out;
 }
+function codPendiente(i) { var c = String(i.codigo || '').trim().replace(/[.\s]/g, ''); return !c || /PEND|PDTE|^PTE$|^PDT$|^PND$|^SIN|^X+$|^\?+$|^-+$|^0+$/i.test(c); }
+function abrirCodigos(o) {
+  var l = aprobadosCli(o);
+  S.cod = { o: o, l: l };
+  $('cdTitulo').textContent = '🏷️ Códigos de lo autorizado · Orden ' + o.NUMERO; $('errCd').textContent = ''; $('btnCdOk').disabled = false;
+  var c = $('cdLista'); c.innerHTML = '';
+  l.forEach(function (i, n) {
+    var d = document.createElement('div'); d.className = 'itc' + (codPendiente(i) ? ' mal' : ''); d.style.marginBottom = '8px';
+    d.innerHTML = '<div style="font-weight:600;font-size:14px">' + esc(i.concepto) + ' <span class="nota">· ' + esc(fmt(Number(i.valor || 0) * Number(i.cantidad || 1))) + '</span></div>' +
+      '<label style="margin-top:4px">Código ' + (codPendiente(i) ? '<b style="color:var(--rojo)">(pendiente)</b>' : '') + '</label><input class="cd_in" data-n="' + n + '" autocapitalize="characters" value="' + esc(codPendiente(i) ? '' : (i.codigo || '')) + '" placeholder="' + esc(i.codigo || 'Ej.: R-0062') + '">';
+    c.appendChild(d);
+  });
+  mostrar('mCod', true);
+}
+$('lnkSoloCod').onclick = function (e) { e.preventDefault(); var o = S.inf.orden; if (S.inf.dirty && !confirm('Va a salir del cambio de ítem sin enviarlo. ¿Seguir?')) return; verTec('mis'); abrirCodigos(o); };
+$('btnCdCancelar').onclick = function () { mostrar('mCod', false); };
+$('btnCdOk').onclick = function () {
+  var C = S.cod, cambios = [], log = [], mal = false;
+  $('cdLista').querySelectorAll('.cd_in').forEach(function (inp) {
+    var i = C.l[Number(inp.dataset.n)], v = inp.value.trim().toUpperCase();
+    if (codPendiente({ codigo: v })) v = '';   // escribir otra vez PDTE no cuenta
+    inp.parentNode.classList.toggle('mal', !v && codPendiente(i));
+    if (!v) { if (codPendiente(i)) mal = true; return; }
+    if (v !== String(i.codigo || '').trim().toUpperCase()) { cambios.push({ ronda: i.ronda, k: i.k, codigo: v }); log.push('• ' + i.concepto + ': ' + (String(i.codigo || '').trim() || '(sin código)') + ' → ' + v); }
+  });
+  if (!cambios.length) { $('errCd').textContent = mal ? 'Escriba el código de los ítems marcados en rojo.' : 'No cambió ningún código.'; return; }
+  var o = C.o, msg = '🏷️ *Códigos corregidos* – Orden ' + ordNom(o.NUMERO, o.CLIENTE) + '\n🔹 ' + [o.TIPO_VEHICULO, o.MODELO, o.COLOR].filter(Boolean).join(' ') + '\n' + log.join('\n') +
+    '\n👨‍🔧 ' + titulo(S.usuario) + '\n\nMismo concepto y precio: no se le envía nada al cliente. Ya quedó en lo autorizado que pasa al Excel.';
+  $('btnCdOk').disabled = true; $('errCd').textContent = '';
+  api({ accion: 'corregirCodigos', numero: o.NUMERO, cambios: cambios, avisoServicio: msg }).then(function () {
+    mostrar('mCod', false); cargarMis();
+    avisoServicio('✓ Quedaron guardados los códigos de la orden ' + o.NUMERO + (mal ? '. Ojo: todavía falta algún código.' : '.') + ' Avísele a Alexander (servicio técnico).', msg, o.NUMERO);
+  }).catch(function (e) { $('btnCdOk').disabled = false; $('errCd').textContent = e.message; });
+};
 function linCambio(dt) {   // "AMORTIGUADOR 28 CM → AMORTIGUADOR 30 CM"
   return (dt.reemplaza || []).map(function (z) { return z.concepto; }).join(' + ') + ' → ' + (dt.items || []).map(function (i) { return i.concepto; }).join(' + ');
 }
