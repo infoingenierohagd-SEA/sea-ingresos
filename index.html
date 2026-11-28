@@ -459,6 +459,11 @@
       <div class="nota" id="infSub"></div>
       <div class="estado-box oculto" id="infDevBox" style="background:#fde7e7;color:#a32d2d"></div>
       <div class="estado-box oculto" id="infPrelim" style="background:#fff8e1;color:#5a4300"></div>
+      <div class="estado-box oculto" id="boxCambio" style="background:#e6f1fb;color:#0c447c;border:2px solid #85b7eb">
+        <b>🔁 ¿Cuál ítem autorizado hay que cambiar? *</b>
+        <div style="font-size:13px;margin:4px 0 6px">Márquelo y abajo, en Cotización, corrija el ítem (ej.: de 28 cm a 30 cm, con su código y precio). Si el cliente aprueba, el ítem viejo se quita y queda el nuevo. Si no aprueba, queda lo que ya estaba autorizado.</div>
+        <div id="cambioLista"></div>
+      </div>
       <div id="boxTipoInf">
         <label style="margin-top:10px">Tipo de informe</label>
         <div class="seg" id="segTipoInf"><button data-v="mantenimiento" class="on">Mantenimiento</button><button data-v="servicio">Servicio / reparación</button></div>
@@ -820,9 +825,9 @@ function mockApi(o) {
       if (tq) return mockTec(o, tq, res, rej);
       if (o.accion === 'login') return res({ ok: true, usuario: us, rol: 'coordinador', siguiente: mock.ultimo + 1, formas: [], tecnicos: ['ANDERSSON GARZON', 'CAMILO CARDENAS'], celulares: { 'ANDERSSON GARZON': '3124412200', 'CAMILO CARDENAS': '3222200341' }, valorRevision: 60000 });
       if (o.accion === 'informes') return res({ ok: true, valorRevision: 60000, informes: mock.infs.filter(function (x) { return x.ESTADO === 'POR REVISAR' || x.ESTADO === 'ENVIADO' || x.ESTADO === 'DEVUELTO'; }).map(function (x) { var f = mockFila(x.NUMERO); return Object.assign({}, x, { datos: x.final || x.original, numFotos: x.fotos.length, previos: mockAprob(x.NUMERO, x.RONDA), orden: { NOMBRE: f.NOMBRE, TELEFONO: f.TELEFONO, CANAL: f.CANAL, TIPO_VEHICULO: f.TIPO_VEHICULO, MODELO: f.MODELO, COLOR: f.COLOR, MOTIVO: f.MOTIVO, ABONO: f.ABONO, TOTAL: f.TOTAL } }); }) });
-      if (o.accion === 'enviarInforme') { var ie = mockInf(o.id); ie.final = o.datos; ie.TEXTO_FINAL = o.texto; ie.REVISO = us; ie.FECHA_ENVIO = hoyISO() + ' 10:00'; var sin = !o.datos.items.length; ie.ESTADO = sin ? 'RESPONDIDO' : 'ENVIADO'; if (sin) ie.respuesta = []; mockFila(ie.NUMERO).ETAPA = sin ? 'APROBADO' : 'ESPERANDO CLIENTE'; return res({ ok: true, etapa: mockFila(ie.NUMERO).ETAPA }); }
-      if (o.accion === 'respuesta') { var ir = mockInf(o.id); ir.respuesta = o.aprobados; ir.ESTADO = 'RESPONDIDO'; if (o.observacion) mockFila(ir.NUMERO).OBS_TECNICO = (mockFila(ir.NUMERO).OBS_TECNICO ? mockFila(ir.NUMERO).OBS_TECNICO + '\n' : '') + o.observacion + ' (' + us + ', ' + hoyISO() + ' 10:00)'; mockFila(ir.NUMERO).AVISO_TECNICO = o.avisoTecnico || ''; mockFila(ir.NUMERO).AVISO_TECNICO_ENVIADO = ''; var todos = mockAprob(ir.NUMERO); var fr2 = mockFila(ir.NUMERO); fr2.ETAPA = todos.length ? 'APROBADO' : 'NO APROBADO'; fr2.COBRO_REVISION = todos.length ? '' : '60000'; fr2.ITEMS_APROBADOS = JSON.stringify(todos); return res({ ok: true, etapa: fr2.ETAPA, aprobados: todos, valorRevision: 60000 }); }
-      if (o.accion === 'devolverInforme') { var iv = mockInf(o.id); if (iv.ESTADO !== 'POR REVISAR') return rej(new Error('Este informe ya se le envió al cliente: no se puede devolver.')); iv.ESTADO = 'DEVUELTO'; iv.DEVOLUCIONES = (iv.DEVOLUCIONES ? iv.DEVOLUCIONES + '\n' : '') + hoyISO() + ' 11:00 ' + us + ': ' + o.motivo; var fv = mockFila(iv.NUMERO); fv.INFORME_DEVUELTO = o.motivo + ' (' + us + ', hoy)'; fv.AVISO_SERVICIO = ''; fv.ETAPA = iv.original.hallazgo ? 'APROBADO' : 'EN TALLER'; return res({ ok: true, numero: iv.NUMERO, tecnico: iv.TECNICO }); }
+      if (o.accion === 'enviarInforme') { var ie = mockInf(o.id); ie.final = o.datos; ie.TEXTO_FINAL = o.texto; ie.REVISO = us; ie.FECHA_ENVIO = hoyISO() + ' 10:00'; var sin = !o.datos.items.length; ie.ESTADO = sin ? 'RESPONDIDO' : 'ENVIADO'; if (sin) ie.respuesta = []; if (ie.original.cambio) return res({ ok: true, etapa: 'ESPERANDO CLIENTE' }); mockFila(ie.NUMERO).ETAPA = sin ? 'APROBADO' : 'ESPERANDO CLIENTE'; return res({ ok: true, etapa: mockFila(ie.NUMERO).ETAPA }); }
+      if (o.accion === 'respuesta') { var ir = mockInf(o.id); ir.respuesta = o.aprobados; ir.ESTADO = 'RESPONDIDO'; if (o.observacion) mockFila(ir.NUMERO).OBS_TECNICO = (mockFila(ir.NUMERO).OBS_TECNICO ? mockFila(ir.NUMERO).OBS_TECNICO + '\n' : '') + o.observacion + ' (' + us + ', ' + hoyISO() + ' 10:00)'; mockFila(ir.NUMERO).AVISO_TECNICO = o.avisoTecnico || ''; mockFila(ir.NUMERO).AVISO_TECNICO_ENVIADO = ''; var todos = mockAprob(ir.NUMERO); var fr2 = mockFila(ir.NUMERO); if (ir.original.cambio) { fr2.ITEMS_APROBADOS = JSON.stringify(todos); return res({ ok: true, etapa: fr2.ETAPA, aprobados: todos, valorRevision: 60000 }); } fr2.ETAPA = todos.length ? 'APROBADO' : 'NO APROBADO'; fr2.COBRO_REVISION = todos.length ? '' : '60000'; fr2.ITEMS_APROBADOS = JSON.stringify(todos); return res({ ok: true, etapa: fr2.ETAPA, aprobados: todos, valorRevision: 60000 }); }
+      if (o.accion === 'devolverInforme') { var iv = mockInf(o.id); if (iv.ESTADO !== 'POR REVISAR') return rej(new Error('Este informe ya se le envió al cliente: no se puede devolver.')); iv.ESTADO = 'DEVUELTO'; iv.DEVOLUCIONES = (iv.DEVOLUCIONES ? iv.DEVOLUCIONES + '\n' : '') + hoyISO() + ' 11:00 ' + us + ': ' + o.motivo; var fv = mockFila(iv.NUMERO); fv.INFORME_DEVUELTO = o.motivo + ' (' + us + ', hoy)'; fv.AVISO_SERVICIO = ''; if (!iv.original.cambio) fv.ETAPA = iv.original.hallazgo ? 'APROBADO' : 'EN TALLER'; return res({ ok: true, numero: iv.NUMERO, tecnico: iv.TECNICO }); }
       if (o.accion === 'iniciarSubida' || o.accion === 'subirParte' || o.accion === 'finSubida') { mockPartes(o).then(res, rej); return; }
       if (o.accion === 'fotosFin') { var ff = mockFila(o.numero)._fin || []; return ff[o.k] ? res({ ok: true, total: ff.length, foto: ff[o.k] }) : rej(new Error('Foto no encontrada')); }
       if (o.accion === 'fotosInforme') { var fz = mockInf(o.id).fotos; if (o.k !== undefined) return fz[o.k] ? res({ ok: true, total: fz.length, foto: fz[o.k] }) : rej(new Error('Foto no encontrada')); return res({ ok: true, fotos: fz }); }
@@ -832,6 +837,7 @@ function mockApi(o) {
       if (o.accion === 'obsLeida') { mockFila(o.numero).OBS_RESP_PEND = ''; return res({ ok: true }); }
       if (o.accion === 'obsTecnico') { var fo = mockFila(o.numero); if (String(o.obs || '').trim().length < 5) return rej(new Error('Escriba la observación.')); fo.OBS_TECNICO = (fo.OBS_TECNICO ? fo.OBS_TECNICO + '\n' : '') + o.obs.trim() + ' (' + us + ', ' + hoyISO() + ' 11:30)'; fo.OBS_RESP_PEND = ''; return res({ ok: true, obsTecnico: fo.OBS_TECNICO }); }
       if (o.accion === 'datosCalificacion' || o.accion === 'calificar') { try { return res(mockCalif(o, us)); } catch (e) { return rej(e); } }
+      if (o.accion === 'entregar' && mockCambioPend(o.numero)) return rej(new Error('La orden ' + o.numero + ' tiene un 🔁 cambio de ítem sin respuesta del cliente (Informes). Registre la respuesta del cliente antes de entregar, para que al Excel pase lo correcto.'));
       if (o.accion === 'entregar') { var fn = mockFila(o.numero); var dd2 = diasParq(fn.FECHA_AVISO_ENTREGA); var cb = o.cobro === undefined ? dd2 * tarifaParq(fn.TIPO_VEHICULO) : o.cobro; fn.ETAPA = 'ENTREGADO'; fn.FECHA_ENTREGA = hoyISO() + ' 16:00'; fn.COBRO_PARQUEADERO = String(cb); fn.PARQUEADERO_NOTA = o.motivo || ''; if (o.atencion !== undefined && o.atencion !== '') mockCalif({ accion: 'calificar', numero: o.numero, campos: { 4: o.atencion } }, us); return res({ ok: true, dias: dd2, cobro: cb }); }
       if (o.accion === 'enviarCorreo') { var fc = mockFila(o.numero); if (!fc.EMAIL) return rej(new Error('La orden no tiene un correo válido')); fc.CORREO_ENVIADO = 'hoy a ' + fc.EMAIL; mock.correos = (mock.correos || []).concat([{ to: fc.EMAIL, texto: o.texto }]); return res({ ok: true, email: fc.EMAIL, pdf: !!fc.pdfCli, fotos: fc.NUM_ARCHIVOS, omitidos: 0 }); }
       if (o.accion === 'recibir') { var fr = mock.filas.filter(function (x) { return x.NUMERO == o.numero; })[0]; if (!fr || fr.ETAPA !== 'TURNO') return rej(new Error('La orden ya fue recibida')); Object.assign(fr, { ETAPA: 'EN TALLER', NOMBRE: o.datos.nombre, FECHA_LLEGADA: 'hoy', RECIBE_LLEGADA: us });
@@ -891,24 +897,30 @@ function mockCalif(o, us) {
 }
 function mockFila(n) { return mock.filas.filter(function (x) { return String(x.NUMERO) === String(n); })[0]; }
 function mockInf(id) { return mock.infs.filter(function (x) { return x.ID === id; })[0]; }
-function mockAprob(n, hasta) { var out = []; mock.infs.forEach(function (x) { if (String(x.NUMERO) !== String(n) || x.ESTADO !== 'RESPONDIDO' || (hasta && x.RONDA >= hasta)) return; ((x.final || x.original).items || []).forEach(function (i, k) { if (x.respuesta[k] === true) out.push(i); }); }); return out; }
+function mockAprob(n, hasta) { var out = []; mock.infs.slice().sort(function (a, b) { return a.RONDA - b.RONDA; }).forEach(function (x) { if (String(x.NUMERO) !== String(n) || x.ESTADO !== 'RESPONDIDO' || (hasta && x.RONDA >= hasta)) return; var dt = x.final || x.original;
+  if (dt.cambio && x.respuesta.some(function (v) { return v === true; })) { var q = (dt.reemplaza || []).map(function (z) { return z.ronda + ':' + z.k; }); out = out.filter(function (i) { return q.indexOf(i.ronda + ':' + i.k) < 0; }); }
+  (dt.items || []).forEach(function (i, k) { if (x.respuesta[k] === true) out.push(Object.assign({}, i, { ronda: x.RONDA, k: k })); }); }); return out; }
+function mockCambioPend(n) { return mock.infs.some(function (x) { return x.NUMERO == n && ['BORRADOR', 'POR REVISAR', 'DEVUELTO', 'ENVIADO'].indexOf(x.ESTADO) >= 0 && (x.original || {}).cambio; }); }
 function mockTec(o, tq, res, rej) {
   if (o.accion === 'login') return res({ ok: true, usuario: tq, rol: 'tecnico', waServicio: '3003479102' });
   if (o.accion === 'misOrdenes') return res({ ok: true, ordenes: mock.filas.filter(function (f) { return f.TECNICO === tq && f.ESTADO !== 'ANULADA' && f.ETAPA !== 'TURNO'; }).map(function (f) {
     return { AVISO_SERVICIO: f.AVISO_SERVICIO, AVISO_SERVICIO_ENVIADO: f.AVISO_SERVICIO_ENVIADO, NUMERO: f.NUMERO, FECHA: f.FECHA, CLIENTE: f.NOMBRE, TIPO_VEHICULO: f.TIPO_VEHICULO, MODELO: f.MODELO, COLOR: f.COLOR, MOTOR_CHASIS: f.MOTOR_CHASIS, MOTIVO: f.MOTIVO, ESTADO_FISICO: f.ESTADO_FISICO, ELEMENTOS: f.ELEMENTOS, COTIZACION: f.COTIZACION, ITEMS: f.ITEMS, TOTAL: f.TOTAL, ABONO: f.ABONO, ETAPA: f.ETAPA, INFORME_DEVUELTO: f.INFORME_DEVUELTO || '', INFORME_AVANCE: f.INFORME_AVANCE || '', OBS_TECNICO: f.OBS_TECNICO || '', NUM_FOTOS_FIN: (f._fin || []).length,
       informes: mock.infs.filter(function (x) { return x.NUMERO == f.NUMERO; }).map(function (x) { return { ID: x.ID, RONDA: x.RONDA, TIPO: x.TIPO, ESTADO: x.ESTADO, FECHA_TECNICO: x.FECHA_TECNICO, datos: x.final || x.original, respuesta: x.respuesta || null, numFotos: x.fotos.length }; }) };
   }).reverse() });
-  if (o.accion === 'guardarInforme') { var f = mockFila(o.numero); if (!f || f.TECNICO !== tq) return rej(new Error('No asignada')); if (f.ETAPA === 'INFORME POR REVISAR' || f.ETAPA === 'ESPERANDO CLIENTE') return rej(new Error('Ya tiene un informe pendiente'));
+  if (o.accion === 'guardarInforme') { var f = mockFila(o.numero); if (!f || f.TECNICO !== tq) return rej(new Error('No asignada')); if (f.ETAPA === 'INFORME POR REVISAR' || f.ETAPA === 'ESPERANDO CLIENTE' || mock.infs.some(function (x) { return x.NUMERO == o.numero && (x.ESTADO === 'POR REVISAR' || x.ESTADO === 'ENVIADO'); })) return rej(new Error('Ya tiene un informe pendiente'));
+    var cmb = !!(o.datos || {}).cambio; if (cmb && ['APROBADO', 'TERMINADO', 'LISTO PARA ENTREGA'].indexOf(f.ETAPA) < 0) return rej(new Error('Etapa no permite cambio')); if (cmb && !o.borrador && !(o.datos.reemplaza || []).length) return rej(new Error('Marque cuál ítem autorizado se cambia.'));
+    if (!cmb && ['TERMINADO', 'LISTO PARA ENTREGA', 'ENTREGADO'].indexOf(f.ETAPA) >= 0) return rej(new Error('La orden ya está terminada.')); var etAnt = f.ETAPA, avAnt = f.AVISO_SERVICIO && !f.AVISO_SERVICIO_ENVIADO ? f.AVISO_SERVICIO : '';
+    var fin = function (r) { if (cmb && !r.borrador) { f.ETAPA = etAnt; if (avAnt) f.AVISO_SERVICIO = avAnt + '\n\n' + (o.avisoServicio || ''); } return res(r); };
     var dv = mock.infs.filter(function (x) { return x.NUMERO == o.numero && x.ESTADO === 'DEVUELTO'; })[0];
-    if (dv && o.borrador) { dv.original = o.datos; dv.TIPO = o.tipo; f.INFORME_AVANCE = hoyISO() + ' 11:00'; return res({ ok: true, id: dv.ID, ronda: dv.RONDA, borrador: true }); }
+    if (dv && o.borrador) { dv.original = o.datos; dv.TIPO = o.tipo; f.INFORME_AVANCE = hoyISO() + ' 11:00'; return fin({ ok: true, id: dv.ID, ronda: dv.RONDA, borrador: true }); }
     var bo = mock.infs.filter(function (x) { return x.NUMERO == o.numero && x.ESTADO === 'BORRADOR'; })[0];
     if (!dv && (bo || o.borrador)) {
       if (!bo) { var rb = mock.infs.filter(function (x) { return x.NUMERO == o.numero; }).length + 1; bo = { ID: 'I' + o.numero + '-' + rb, NUMERO: f.NUMERO, RONDA: rb, TECNICO: tq, fotos: [] }; mock.infs.push(bo); }
       bo.original = o.datos; bo.TIPO = o.tipo; bo.FECHA_TECNICO = hoyISO() + ' 11:00';
-      if (o.borrador) { bo.ESTADO = 'BORRADOR'; f.INFORME_AVANCE = bo.FECHA_TECNICO; return res({ ok: true, id: bo.ID, ronda: bo.RONDA, borrador: true }); }
-      bo.ESTADO = 'POR REVISAR'; f.INFORME_AVANCE = ''; f.ETAPA = 'INFORME POR REVISAR'; f.AVISO_SERVICIO = o.avisoServicio || ''; f.AVISO_SERVICIO_ENVIADO = ''; return res({ ok: true, id: bo.ID, ronda: bo.RONDA });
+      if (o.borrador) { bo.ESTADO = 'BORRADOR'; f.INFORME_AVANCE = bo.FECHA_TECNICO; return fin({ ok: true, id: bo.ID, ronda: bo.RONDA, borrador: true }); }
+      bo.ESTADO = 'POR REVISAR'; f.INFORME_AVANCE = ''; f.ETAPA = 'INFORME POR REVISAR'; f.AVISO_SERVICIO = o.avisoServicio || ''; f.AVISO_SERVICIO_ENVIADO = ''; return fin({ ok: true, id: bo.ID, ronda: bo.RONDA });
     }
-    if (dv) { dv.original = o.datos; dv.TIPO = o.tipo; dv.ESTADO = 'POR REVISAR'; dv.final = null; dv.FECHA_TECNICO = hoyISO() + ' 12:00'; f.INFORME_DEVUELTO = ''; f.ETAPA = 'INFORME POR REVISAR'; f.AVISO_SERVICIO = o.avisoServicio || ''; f.AVISO_SERVICIO_ENVIADO = ''; return res({ ok: true, id: dv.ID, ronda: dv.RONDA, corregido: true }); } var r = mock.infs.filter(function (x) { return x.NUMERO == o.numero; }).length + 1; var id = 'I' + o.numero + '-' + r; mock.infs.push({ ID: id, NUMERO: f.NUMERO, RONDA: r, TIPO: o.tipo, TECNICO: tq, FECHA_TECNICO: hoyISO() + ' 09:30', original: o.datos, ESTADO: 'POR REVISAR', fotos: [] }); f.ETAPA = 'INFORME POR REVISAR'; f.AVISO_SERVICIO = o.avisoServicio || ''; f.AVISO_SERVICIO_ENVIADO = ''; return res({ ok: true, id: id, ronda: r }); }
+    if (dv) { dv.original = o.datos; dv.TIPO = o.tipo; dv.ESTADO = 'POR REVISAR'; dv.final = null; dv.FECHA_TECNICO = hoyISO() + ' 12:00'; f.INFORME_DEVUELTO = ''; f.ETAPA = 'INFORME POR REVISAR'; f.AVISO_SERVICIO = o.avisoServicio || ''; f.AVISO_SERVICIO_ENVIADO = ''; return fin({ ok: true, id: dv.ID, ronda: dv.RONDA, corregido: true }); } var r = mock.infs.filter(function (x) { return x.NUMERO == o.numero; }).length + 1; var id = 'I' + o.numero + '-' + r; mock.infs.push({ ID: id, NUMERO: f.NUMERO, RONDA: r, TIPO: o.tipo, TECNICO: tq, FECHA_TECNICO: hoyISO() + ' 09:30', original: o.datos, ESTADO: 'POR REVISAR', fotos: [] }); f.ETAPA = 'INFORME POR REVISAR'; f.AVISO_SERVICIO = o.avisoServicio || ''; f.AVISO_SERVICIO_ENVIADO = ''; return fin({ ok: true, id: id, ronda: r }); }
   if (o.accion === 'iniciarSubida' || o.accion === 'subirParte' || o.accion === 'finSubida') { mockPartes(o).then(res, rej); return; }
   if (o.accion === 'subir' && o.esFin) { var fq = mockFila(o.numero); (fq._fin = fq._fin || []).push({ nombre: o.nombre, mime: o.mime, b64: o.b64 }); fq.FOTOS_FIN = JSON.stringify(fq._fin.map(function (x, i) { return 'id' + i; })); return res({ ok: true }); }
   if (o.accion === 'subir' && o.informe && !o.esRespuesta) { mockInf(o.informe).fotos.push({ nombre: o.nombre, mime: o.mime, b64: o.b64 }); return res({ ok: true }); }
@@ -2004,6 +2016,14 @@ function avisarTecnico(nombre, texto) {
 function msgTecRespuesta(inf, ap, etapa, obs) {
   var it = (inf.datos && inf.datos.items) || [], si = it.filter(function (x, k) { return ap[k]; }), no = it.filter(function (x, k) { return !ap[k]; });
   var L = ['🔧 *Orden No. ' + ordNom(inf.NUMERO, inf.orden.NOMBRE) + '* – respuesta del cliente', '🔹 Vehículo: ' + [inf.orden.TIPO_VEHICULO, inf.orden.MODELO, inf.orden.COLOR].filter(Boolean).join(' ')];
+  if (inf.datos && inf.datos.cambio) {
+    var rz = (inf.datos.reemplaza || []).map(function (i) { return linItem(i, false); }).join(', ');
+    if (si.length) { L.push('', '🔁 *El cliente AUTORIZÓ el cambio.*', 'Se quita: ' + rz); L.push('Queda autorizado:'); si.forEach(function (i) { L.push('• ' + linItem(i, false)); }); }
+    else L.push('', '❌ *El cliente NO autorizó el cambio.* Sigue autorizado solo lo que estaba: ' + rz + '. Hable con servicio técnico antes de seguir.');
+    if (obs) L.push('', '📝 *Observación:* ' + obs);
+    L.push('', 'Detalle en la app › Mis órdenes: ' + appUrl());
+    return L.join('\n');
+  }
   if (si.length) { L.push('', '✅ AUTORIZADO, puede avanzar:'); si.forEach(function (i) { L.push('• ' + linItem(i, false)); }); }
   if (no.length) { L.push('', '❌ NO autorizado, no lo haga:'); no.forEach(function (i) { L.push('• ' + linItem(i, false)); }); }
   if (etapa === 'NO APROBADO') L.push('', 'El cliente no autorizó la reparación. No haga trabajos: deje el vehículo armado y listo para entrega.');
@@ -2049,10 +2069,15 @@ function cargarMis() {
       var infDev = (o.informes || []).filter(function (i) { return i.ESTADO === 'DEVUELTO'; })[0];
       var infBor = (o.informes || []).filter(function (i) { return i.ESTADO === 'BORRADOR'; })[0];
       if (infBor && !o.INFORME_DEVUELTO) { var hb = !!(infBor.datos && infBor.datos.hallazgo);
-        boton(acc, '✏️ Continuar ' + (hb ? 'hallazgo' : 'informe'), 'pri', function () { abrirFormInf(o, hb, infBor); }); c.appendChild(d); return; }
+        boton(acc, '✏️ Continuar ' + (infBor.datos && infBor.datos.cambio ? 'cambio de ítem' : hb ? 'hallazgo' : 'informe'), 'pri', function () { abrirFormInf(o, hb, infBor); }); c.appendChild(d); return; }
       if (o.INFORME_DEVUELTO && infDev) { boton(acc, '✏️ Corregir informe', 'pri', function () { abrirFormInf(o, !!(infDev.datos && infDev.datos.hallazgo), infDev); }); c.appendChild(d); return; }
       if (o.ETAPA === 'EN TALLER') boton(acc, '📝 Hacer informe', 'pri', function () { abrirFormInf(o, false); });
       if (o.ETAPA === 'APROBADO') boton(acc, '➕ Hallazgo nuevo (requiere autorización)', 'sec', function () { abrirFormInf(o, true); });
+      var pendInf = (o.informes || []).some(function (i) { return i.ESTADO === 'POR REVISAR' || i.ESTADO === 'ENVIADO'; });
+      if (['APROBADO', 'TERMINADO', 'LISTO PARA ENTREGA'].indexOf(o.ETAPA) >= 0 && aprobadosCli(o).length) {
+        if (pendInf) acc.insertAdjacentHTML('beforeend', '<div class="nota">🔁 Para cambiar un ítem autorizado, espere a que se resuelva el informe que está pendiente.</div>');
+        else boton(acc, '🔁 Cambiar un ítem ya autorizado (otra medida, otra referencia…)', 'sec', function () { abrirFormInf(o, true, null, true); });
+      }
       if (o.ETAPA === 'TERMINADO' || o.ETAPA === 'LISTO PARA ENTREGA')
         boton(acc, Number(o.NUM_FOTOS_FIN) ? '📸 Agregar más fotos de cómo quedó (' + o.NUM_FOTOS_FIN + ' ya subidas)' : '📸 Agregar fotos de cómo quedó', Number(o.NUM_FOTOS_FIN) ? 'sec' : 'pri', function () { abrirFin(o, true); });
       if (o.ETAPA === 'APROBADO' || o.ETAPA === 'NO APROBADO')
@@ -2061,10 +2086,23 @@ function cargarMis() {
     });
   }).catch(function (e) { $('listaMis').innerHTML = '<div class="card err">' + esc(e.message) + '</div>'; });
 }
+/* lo autorizado hoy en la orden (igual que el servidor: un cambio aprobado quita el ítem viejo) */
+function aprobadosCli(o) {
+  var out = [];
+  (o.informes || []).filter(function (x) { return x.ESTADO === 'RESPONDIDO'; }).sort(function (a, b) { return a.RONDA - b.RONDA; }).forEach(function (x) {
+    var dt = x.datos || {}, r = x.respuesta || [];
+    if (dt.cambio && r.some(function (v) { return v === true; })) { var q = (dt.reemplaza || []).map(function (z) { return z.ronda + ':' + z.k; }); out = out.filter(function (i) { return q.indexOf(i.ronda + ':' + i.k) < 0; }); }
+    (dt.items || []).forEach(function (i, k) { if (r[k] === true) out.push(Object.assign({}, i, { ronda: Number(x.RONDA), k: k })); });
+  });
+  return out;
+}
+function linCambio(dt) {   // "AMORTIGUADOR 28 CM → AMORTIGUADOR 30 CM"
+  return (dt.reemplaza || []).map(function (z) { return z.concepto; }).join(' + ') + ' → ' + (dt.items || []).map(function (i) { return i.concepto; }).join(' + ');
+}
 function itemsTec(o) {
   return (o.informes || []).map(function (inf) {
     var it = (inf.datos && inf.datos.items) || [];
-    var cab = '<div style="margin-top:10px;font-size:14px"><b>Informe ' + inf.RONDA + (inf.datos && inf.datos.hallazgo ? ' (hallazgo nuevo)' : '') + '</b>' + (inf.ESTADO === 'DEVUELTO' ? ' <span style="color:#a32d2d">(devuelto para corregir)</span>' : inf.ESTADO === 'BORRADOR' ? ' <span style="color:#0c447c">(en progreso, sin enviar)</span>' : '');
+    var cab = '<div style="margin-top:10px;font-size:14px"><b>Informe ' + inf.RONDA + (inf.datos && inf.datos.cambio ? ' (🔁 cambio de ítem: reemplaza ' + esc((inf.datos.reemplaza || []).map(function (z) { return z.concepto; }).join(', ')) + ')' : inf.datos && inf.datos.hallazgo ? ' (hallazgo nuevo)' : '') + '</b>' + (inf.ESTADO === 'DEVUELTO' ? ' <span style="color:#a32d2d">(devuelto para corregir)</span>' : inf.ESTADO === 'BORRADOR' ? ' <span style="color:#0c447c">(en progreso, sin enviar)</span>' : '');
     if (!it.length) return cab + '<div class="nota">Sin ítems por autorizar.</div></div>';
     return cab + it.map(function (i, k) {
       var r = inf.respuesta ? inf.respuesta[k] : null;
@@ -2074,14 +2112,18 @@ function itemsTec(o) {
 }
 function verTec(vista) { mostrar('vistaMis', vista === 'mis'); mostrar('vistaFormInf', vista === 'form'); window.scrollTo(0, 0); }
 function esRepuesto(tipo) { return /repuesto|bater|cargador/i.test(String(tipo || '')); }
-function abrirFormInf(o, hallazgo, prev) {   // prev = informe devuelto: se abre con lo que ya había llenado
-  var soloServ = hallazgo || esRepuesto(o.TIPO_VEHICULO);   // repuestos (batería, cargador…): sin componentes, solo informe de servicio
+function abrirFormInf(o, hallazgo, prev, cambio) {   // prev = informe devuelto: se abre con lo que ya había llenado
   var pd = prev ? JSON.parse(JSON.stringify(prev.datos || {})) : null;
+  cambio = !!cambio || !!(pd && pd.cambio);   // cambio de un ítem ya autorizado (otra medida/referencia): va como hallazgo
+  if (cambio) hallazgo = true;
+  var soloServ = hallazgo || esRepuesto(o.TIPO_VEHICULO);   // repuestos (batería, cargador…): sin componentes, solo informe de servicio
   S.inf = { orden: o, hallazgo: hallazgo, tipo: soloServ ? 'servicio' : ((pd && pd.tipo) || 'mantenimiento'), comps: compsCompletos(pd ? pd.componentes : []),
     items: itemsIniciales(o, hallazgo, prev), fotos: [], proc: null, corrige: !!prev && prev.ESTADO === 'DEVUELTO', fotosPrev: prev ? Number(prev.numFotos || 0) : 0,
-    borId: prev ? prev.ID : null, dirty: false };
+    borId: prev ? prev.ID : null, dirty: false, cambio: cambio, reemplaza: cambio && pd ? (pd.reemplaza || []) : [] };
   var enProg = !!prev && prev.ESTADO === 'BORRADOR';
-  $('infTitulo').textContent = (enProg ? 'Continuar ' + (hallazgo ? 'hallazgo' : 'informe') + ' · Orden ' : prev ? 'Corregir ' + (hallazgo ? 'hallazgo' : 'informe') + ' · Orden ' : (hallazgo ? 'Hallazgo nuevo · Orden ' : 'Informe · Orden ')) + o.NUMERO;
+  var qu = cambio ? 'cambio de ítem' : (hallazgo ? 'hallazgo' : 'informe');
+  $('infTitulo').textContent = (enProg ? 'Continuar ' + qu + ' · Orden ' : prev ? 'Corregir ' + qu + ' · Orden ' : (cambio ? '🔁 Cambio de ítem autorizado · Orden ' : hallazgo ? 'Hallazgo nuevo · Orden ' : 'Informe · Orden ')) + o.NUMERO;
+  pintarCambio();
   $('infGuardado').textContent = enProg ? '📝 Viene de un avance guardado el ' + String(prev.FECHA_TECNICO || '').replace(/^'/, '') + (S.inf.fotosPrev ? ' · ' + S.inf.fotosPrev + ' foto(s)/video(s) ya guardados' : '') : '';
   $('infSub').textContent = [o.TIPO_VEHICULO, o.MODELO, o.COLOR].filter(Boolean).join(' ') + ' · Motivo: ' + o.MOTIVO;
   var ci = cotizIngreso(o);
@@ -2095,6 +2137,33 @@ function abrirFormInf(o, hallazgo, prev) {   // prev = informe devuelto: se abre
   pintarComponentes($('infComps'), S.inf.comps);
   pintarItems($('infItems'), S.inf.items, totalInf); totalInf();
   pintarFotosInf(); aplicarTipoInf(); verTec('form');
+}
+function pintarCambio() {
+  var I = S.inf; mostrar('boxCambio', !!I.cambio);
+  if (!I.cambio) return;
+  var c = $('cambioLista'); c.innerHTML = '';
+  var l = aprobadosCli(I.orden);
+  I.reemplaza = I.reemplaza.filter(function (z) { return l.some(function (i) { return i.ronda === z.ronda && i.k === z.k; }); });
+  if (!l.length) { c.innerHTML = '<div class="nota">No hay ítems autorizados en esta orden.</div>'; return; }
+  l.forEach(function (i) {
+    var on = I.reemplaza.some(function (z) { return z.ronda === i.ronda && z.k === i.k; });
+    var lb = document.createElement('label'); lb.style.cssText = 'display:flex;gap:8px;align-items:center;font-weight:600;margin:4px 0';
+    lb.innerHTML = '<input type="checkbox" style="width:22px;height:22px;flex:0 0 auto"' + (on ? ' checked' : '') + '><span>' + esc(linItem(i, true)) + '</span>';
+    lb.querySelector('input').onchange = function () {
+      var key = i.ronda + ':' + i.k;
+      if (this.checked) {
+        I.reemplaza.push({ ronda: i.ronda, k: i.k, codigo: i.codigo || '', concepto: i.concepto, cantidad: Number(i.cantidad || 1), valor: Number(i.valor || 0) });
+        // se carga una copia abajo para corregirla (medida, código, valor)
+        I.items.push({ codigo: i.codigo || '', concepto: i.concepto, cantidad: i.cantidad || 1, valor: i.valor, _de: key });
+      } else {
+        I.reemplaza = I.reemplaza.filter(function (z) { return z.ronda + ':' + z.k !== key; });
+        I.items = I.items.filter(function (x) { return x._de !== key; });
+      }
+      I.dirty = true; $('errInf').textContent = '';
+      pintarItems($('infItems'), I.items, totalInf); totalInf();
+    };
+    c.appendChild(lb);
+  });
 }
 function itemsPrelim(o) {   // ítems de la cotización del ingreso; si solo hay texto + total, un ítem con ese texto (sin valores ni "abono…")
   var c = cotizIngreso(o);
@@ -2116,7 +2185,7 @@ function itemsIniciales(o, hallazgo, prev) {   // el primer informe (no hallazgo
 function aplicarTipoInf() {
   var mant = S.inf.tipo === 'mantenimiento';
   mostrar('cardMant', mant);
-  $('lblInfDesc').textContent = S.inf.hallazgo ? 'Hallazgo nuevo: qué encontró y qué hay que hacer *' : (mant ? 'Trabajos realizados / comentarios / observaciones *' : 'Descripción del proceso, hallazgos y observaciones *');
+  $('lblInfDesc').textContent = S.inf.cambio ? 'Por qué hay que cambiarlo (qué encontró al instalarlo) *' : S.inf.hallazgo ? 'Hallazgo nuevo: qué encontró y qué hay que hacer *' : (mant ? 'Trabajos realizados / comentarios / observaciones *' : 'Descripción del proceso, hallazgos y observaciones *');
 }
 $('segTipoInf').querySelectorAll('button').forEach(function (b) {
   b.onclick = function () { $('segTipoInf').querySelectorAll('button').forEach(function (x) { x.classList.remove('on'); }); b.classList.add('on'); S.inf.tipo = b.dataset.v; aplicarTipoInf(); };
@@ -2155,6 +2224,7 @@ function guardarAvance(salir) {
   var items = (I.items || []).filter(function (i) { return i && (String(i.codigo || '').trim() || String(i.concepto || '').trim() || Number(i.valor)); })
     .map(function (i) { var o = { codigo: i.codigo || '', concepto: i.concepto || '', cantidad: i.cantidad || 1, valor: i.valor || '' }; if (i.op) o.op = i.op; return o; });
   var datos = { tipo: I.tipo, componentes: I.tipo === 'mantenimiento' ? limpiarComps(I.comps) : [], descripcion: $('infDesc').value.trim(), observaciones: '', items: items, hallazgo: !!I.hallazgo };
+  if (I.cambio) { datos.cambio = true; datos.reemplaza = I.reemplaza; }
   $('btnReintentar').onclick = function () { guardarAvance(salir); };
   mostrar('mProceso', true); mostrar('btnReintentar', false); $('procErr').textContent = ''; $('procTitulo').textContent = 'Orden ' + I.orden.NUMERO + ' · guardando avance';
   progreso(15, 'Guardando avance…');
@@ -2188,9 +2258,11 @@ $('btnEnviarInf').onclick = function () {
   var I = S.inf, items = limpiarItems(I.items), comps = I.tipo === 'mantenimiento' ? limpiarComps(I.comps) : [];
   var desc = $('infDesc').value.trim();
   var e = validarInforme($('infItems'), I.items, $('infComps'), I.comps, I.tipo, desc, I.hallazgo);
+  if (I.cambio && !I.reemplaza.length) e.unshift('marcar arriba cuál ítem autorizado se cambia');
   if (e.length) { $('errInf').textContent = 'Falta: ' + e.join('; ') + '.'; return; }
   $('errInf').textContent = '';
   I.datos = { tipo: I.tipo, componentes: comps, descripcion: desc, observaciones: '', items: items, hallazgo: !!I.hallazgo };
+  if (I.cambio) { I.datos.cambio = true; I.datos.reemplaza = I.reemplaza; }
   enviarInfTec();
 };
 function enviarInfTec() {
@@ -2297,6 +2369,8 @@ function terminarConFotos() {
 /* el técnico le avisa al WhatsApp de servicio técnico (lo ve Alexander en ese celular) */
 function msgServInforme(I) {
   var o = I.orden, n = (I.datos.items || []).length;
+  if (I.cambio) return '🔁 *Cambio de ítem autorizado para revisar*' + (I.corrige ? ' (corregido)' : '') + ' – Orden ' + ordNom(o.NUMERO, o.CLIENTE) + '\n🔹 ' + [o.TIPO_VEHICULO, o.MODELO, o.COLOR].filter(Boolean).join(' ') +
+    '\n🔹 ' + linCambio(I.datos) + (I.fotos.length ? '\n🔹 ' + I.fotos.length + ' foto(s)' : '') + '\n👨‍🔧 ' + titulo(S.usuario) + '\n\nRevisar en la app › Informes y enviárselo al cliente para que lo apruebe.';
   return (I.corrige ? '✏️ *Informe corregido para revisar*' : (I.hallazgo ? '➕ *Hallazgo nuevo para revisar*' : '📝 *Informe listo para revisar*')) + ' – Orden ' + ordNom(o.NUMERO, o.CLIENTE) + '\n🔹 ' + [o.TIPO_VEHICULO, o.MODELO, o.COLOR].filter(Boolean).join(' ') +
     '\n🔹 ' + (I.tipo === 'mantenimiento' ? 'Mantenimiento' : 'Servicio') + ' · ' + n + (n === 1 ? ' ítem por autorizar' : ' ítems por autorizar') + (I.fotos.length ? ' · ' + I.fotos.length + ' foto(s)' : '') +
     '\n👨‍🔧 ' + titulo(S.usuario) + '\n\nRevisar en la app › Informes.';
@@ -2367,7 +2441,31 @@ $('btnRecargarInf').onclick = cargarInformes;
 $('btnVerInf').onclick = function () { verTab('Informes'); };
 
 /* ---- mensaje del informe para el cliente (formato de las plantillas de SEA) ---- */
+function previosVigentes(inf, dt) {   // en un cambio, lo autorizado sin el ítem que se reemplaza
+  var q = dt && dt.cambio ? (dt.reemplaza || []).map(function (z) { return z.ronda + ':' + z.k; }) : [];
+  return (inf.previos || []).filter(function (i) { return q.indexOf(i.ronda + ':' + i.k) < 0; });
+}
+function mensajeCambio(inf, dt) {
+  var o = inf.orden || {}, L = [], nuevo = sumaItems(dt.items || []), viejo = sumaItems(dt.reemplaza || []), dif = nuevo - viejo;
+  L.push('🔁 *Cambio en lo autorizado* – SEA', '');
+  L.push('🔹 Orden No. ' + inf.NUMERO);
+  L.push('🔹 Cliente: ' + (o.NOMBRE || ''));
+  L.push('🔹 Vehículo: ' + [o.TIPO_VEHICULO, o.MODELO, o.COLOR].filter(Boolean).join(' '));
+  L.push('🔹 Técnico: ' + titulo(inf.TECNICO));
+  if (dt.descripcion) L.push('', '*Qué pasó*', dt.descripcion);
+  L.push('', '❌ *Lo que estaba autorizado:*'); (dt.reemplaza || []).forEach(function (i) { L.push('• ' + linItem(i, true)); });
+  L.push('', '✅ *Lo que se necesita:*'); (dt.items || []).forEach(function (i) { L.push('• ' + linItem(i, true)); });
+  L.push('', 'Diferencia: ' + (dif > 0 ? '+' + fmt(dif) + ' (se suma a su cuenta)' : dif < 0 ? '−' + fmt(-dif) + ' (se descuenta de su cuenta)' : 'sin cambio de valor'));
+  var pv = previosVigentes(inf, dt), tot = sumaItems(pv) + nuevo, ab = Number(numDe(o.ABONO) || 0);
+  L.push('', '💰 *Así quedaría su cuenta:*'); pv.concat(dt.items || []).forEach(function (i) { L.push('• ' + linItem(i, true)); });
+  L.push('Total: ' + fmt(tot)); if (ab) L.push('Abono: ' + fmt(ab)); L.push('Saldo: ' + fmt(tot - ab));
+  L.push('Los pagos con tarjeta tienen un recargo del 4%.');
+  L.push('', '✅ Por favor confírmenos si *autoriza el cambio*. Si no lo autoriza, se mantiene lo que ya estaba autorizado.');
+  L.push('', '📍 Av. Suba cra 50 # 91 - 82 - Bogotá · 📞 300 347 9102');
+  return L.join('\n');
+}
 function mensajeInforme(inf, dt) {
+  if (dt && dt.cambio) return mensajeCambio(inf, dt);
   var o = inf.orden || {}, mant = dt.tipo === 'mantenimiento', L = [];
   L.push('🔧 *' + (dt.hallazgo ? 'Informe de servicio – hallazgo adicional' : (mant ? 'Informe de mantenimiento' : 'Informe de servicio')) + '* – SEA', '');
   L.push('🔹 Orden No. ' + inf.NUMERO);
@@ -2462,11 +2560,12 @@ function abrirRevision(inf) {
   $('segRevTipo').querySelectorAll('button').forEach(function (b) { b.classList.toggle('on', b.dataset.v === dt.tipo); });
   $('segRevTipo').querySelector('[data-v=mantenimiento]').disabled = esRepuesto(inf.orden.TIPO_VEHICULO);
   $('revDesc').value = [dt.descripcion, dt.observaciones].filter(Boolean).join('\n\n'); dt.observaciones = ''; $('errRev').textContent = '';
-  $('lblRevDesc').textContent = dt.hallazgo ? 'Hallazgo: qué encontró y qué hay que hacer *' : (dt.tipo === 'mantenimiento' ? 'Trabajos realizados / comentarios / observaciones *' : 'Descripción del proceso, hallazgos y observaciones *');
+  $('lblRevDesc').textContent = dt.cambio ? '🔁 Cambio de ítem autorizado – por qué hay que cambiarlo *' : dt.hallazgo ? 'Hallazgo: qué encontró y qué hay que hacer *' : (dt.tipo === 'mantenimiento' ? 'Trabajos realizados / comentarios / observaciones *' : 'Descripción del proceso, hallazgos y observaciones *');
   pintarComponentes($('revComps'), dt.componentes, revCambio);
   pintarItems($('revItems'), dt.items, revCambio);
-  var prev = inf.previos || [];
-  $('revPrevios').innerHTML = prev.length ? '<b>En proceso (ya autorizado):</b><br>' + prev.map(function (i) { return '✅ ' + esc(linItem(i, true)); }).join('<br>') : '';
+  var prev = previosVigentes(inf, dt);
+  $('revPrevios').innerHTML = (dt.cambio ? '<b>🔁 Se reemplaza (si el cliente aprueba):</b><br>' + (dt.reemplaza || []).map(function (i) { return '❌ ' + esc(linItem(i, true)); }).join('<br>') + '<br>' : '') +
+    (prev.length ? '<b>En proceso (ya autorizado):</b><br>' + prev.map(function (i) { return '✅ ' + esc(linItem(i, true)); }).join('<br>') : '');
   $('revFotos').textContent = inf.numFotos ? inf.numFotos + ' foto(s). Se comparten con el cliente al enviar.' : 'El técnico no adjuntó fotos.';
   $('revAbono').textContent = fmt(numDe(inf.orden.ABONO) || 0);
   mostrar('cardRevMant', dt.tipo === 'mantenimiento');
@@ -2477,13 +2576,15 @@ function abrirRevision(inf) {
 }
 function datosRev() {
   var dt = S.rev.datos;
-  return { tipo: dt.tipo, componentes: dt.tipo === 'mantenimiento' ? limpiarComps(dt.componentes) : [], descripcion: $('revDesc').value.trim(),
+  var r = { tipo: dt.tipo, componentes: dt.tipo === 'mantenimiento' ? limpiarComps(dt.componentes) : [], descripcion: $('revDesc').value.trim(),
     observaciones: '', items: limpiarItems(dt.items), hallazgo: !!dt.hallazgo };
+  if (dt.cambio) { r.cambio = true; r.reemplaza = dt.reemplaza || []; }
+  return r;
 }
 function revTotales() {
   var sin = limpiarItems(S.rev.datos.items).filter(function (i) { return !i.codigo; }).length;
   $('revSinCod').textContent = sin ? '⚠️ ' + sin + (sin === 1 ? ' ítem sin código' : ' ítems sin código') + ': es obligatorio para enviar.' : '';
-  var pv = sumaItems(S.rev.inf.previos), tot = pv + sumaItems(S.rev.datos.items), ab = Number(numDe(S.rev.inf.orden.ABONO) || 0), to = totalesOp(S.rev.datos.items);
+  var pv = sumaItems(previosVigentes(S.rev.inf, S.rev.datos)), tot = pv + sumaItems(S.rev.datos.items), ab = Number(numDe(S.rev.inf.orden.ABONO) || 0), to = totalesOp(S.rev.datos.items);
   if (to) { $('revTotal').innerHTML = to.map(function (x) { return 'Opción ' + x.op + ': ' + fmt(pv + x.total); }).join('<br>'); $('revSaldo').innerHTML = to.map(function (x) { return 'Opción ' + x.op + ': ' + fmt(pv + x.total - ab); }).join('<br>'); }
   else { $('revTotal').textContent = fmt(tot); $('revSaldo').textContent = fmt(tot - ab); }
 }
@@ -2667,7 +2768,7 @@ function pintarResp() {
   });
   $('rpTotal').textContent = fmt(sumaItems(it.filter(function (x, k) { return S.rp.ap[k] === true; })));
   var nada = S.rp.ap.length && S.rp.ap.every(function (x) { return x === false; }), prev = (S.rp.inf.previos || []).length;
-  $('rpRevision').innerHTML = nada ? (prev ? 'No autorizó lo nuevo: el técnico sigue solo con lo que ya estaba autorizado.' : '<b style="color:var(--rojo)">No autorizó nada:</b> se cobra la revisión de ' + fmt(S.valorRev || 60000) + ' (queda anotado en la orden) y el técnico deja el vehículo armado para entrega.') : '';
+  $('rpRevision').innerHTML = nada && S.rp.inf.datos.cambio ? 'No autorizó el cambio: queda lo que ya estaba autorizado. Avísele al técnico.' : nada ? (prev ? 'No autorizó lo nuevo: el técnico sigue solo con lo que ya estaba autorizado.' : '<b style="color:var(--rojo)">No autorizó nada:</b> se cobra la revisión de ' + fmt(S.valorRev || 60000) + ' (queda anotado en la orden) y el técnico deja el vehículo armado para entrega.') : '';
 }
 $('btnRpObsRep').onclick = function () {
   var t = 'El cliente trae los repuestos para instalarlos (no los tenemos). Instálelos cuando los traiga y revise que sean los correctos.';
@@ -2680,7 +2781,7 @@ $('btnRpGuardar').onclick = function () {
   var R = S.rp;
   if (R.ap.some(function (x) { return x === null; })) { $('errRp').textContent = 'Marque ✅ o ❌ en cada ítem.'; return; }
   $('errRp').textContent = ''; var btn = this; btn.disabled = true;
-  var etapaPrev = R.ap.some(function (x) { return x; }) || (R.inf.previos || []).length ? 'APROBADO' : 'NO APROBADO';
+  var etapaPrev = (R.inf.datos && R.inf.datos.cambio) || R.ap.some(function (x) { return x; }) || (R.inf.previos || []).length ? 'APROBADO' : 'NO APROBADO';
   var paso = R.guardado ? Promise.resolve(R.guardado) : api({ accion: 'respuesta', id: R.inf.ID, aprobados: R.ap, observacion: $('rpObs').value.trim(), avisoTecnico: msgTecRespuesta(R.inf, R.ap, etapaPrev, $('rpObs').value.trim()) }).then(function (r) { R.guardado = r; return r; });
   paso.then(function (r) {
     btn.disabled = false;
